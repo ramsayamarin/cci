@@ -21,6 +21,11 @@ That's it. GitHub Actions automatically publishes to npm when a version tag is p
 - Uses a granular npm access token stored as `NPM_TOKEN` in GitHub Actions secrets
 - Token expires **June 20, 2026** — after that, go to npmjs.com → Access Tokens → generate a new granular token with Bypass 2FA checked, then update the secret at https://github.com/ramsayamarin/cci/settings/secrets/actions
 
+## Local development vs global install
+- **Everyday use:** `cci` — runs the globally installed public version (`npm install -g claude-cci`)
+- **When developing:** `node C:\dev\cci\bin\cli.js` — runs local code directly, no confusion with the global install
+- Do NOT use `npm link` — keep them separate
+
 ## npm account
 - Username: `ramsay`
 - Email: ramsayamarin@gmail.com
