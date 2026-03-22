@@ -1,6 +1,6 @@
 {
   "name": "claude-cci",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Inspect Claude Code configuration - skills, plugins, MCP servers, memory, hooks, agents, settings, marketplace",
   "bin": {
     "cci": "bin/cli.js"
