@@ -1,0 +1,30 @@
+{
+  "name": "claude-cci",
+  "version": "0.1.0",
+  "description": "Inspect Claude Code configuration - skills, plugins, MCP servers, memory, hooks, agents, settings, marketplace",
+  "bin": {
+    "cci": "./bin/cli.js"
+  },
+  "files": [
+    "bin/",
+    "lib/"
+  ],
+  "engines": {
+    "node": ">=16"
+  },
+  "license": "MIT",
+  "author": "Ramsay Amarin",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ramsayamarin/cci.git"
+  },
+  "homepage": "https://github.com/ramsayamarin/cci#readme",
+  "keywords": [
+    "claude",
+    "claude-code",
+    "anthropic",
+    "inspector",
+    "dashboard",
+    "cli"
+  ]
+}

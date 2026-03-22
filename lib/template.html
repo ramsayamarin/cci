@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>cci</title>
+<style>
+:root {
+  --bg: #121212;
+  --bg-card: #1e1e1e;
+  --bg-card-hover: #2a2a2a;
+  --bg-surface: #181818;
+  --bg-sidebar: #151515;
+  --border: #2e2e2e;
+  --border-light: #3e3e3e;
+  --text: #e0e0e0;
+  --text-dim: #909090;
+  --text-muted: #606060;
+  --accent: #a0a0a0;
+  --scope-user: #4a9eff;
+  --scope-project: #4ade80;
+  --scope-plugin: #a78bfa;
+  --scope-managed: #f87171;
+  --scope-local: #9ca3af;
+  --dot-green: #4ade80;
+  --dot-yellow: #facc15;
+  --dot-red: #f87171;
+  --dot-gray: #4a4a4a;
+}
+.hidden { display: none; }
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+/* Header */
+.header { padding: 12px 20px; background: var(--bg-surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 14px; flex-shrink: 0; }
+.header-logo { font-size: 16px; font-weight: 700; }
+.header-logo .cci { color: #ffffff; }
+.header-logo .product { color: #e8863a; }
+.header-meta { margin-left: auto; display: flex; gap: 12px; font-size: 11px; color: var(--text-dim); }
+.header-meta .tag { background: var(--bg-card); padding: 2px 8px; border-radius: 10px; border: 1px solid var(--border); font-family: 'Cascadia Code','Consolas', monospace; }
+
+/* Main layout */
+.main { display: flex; flex: 1; overflow: hidden; }
+
+/* Sidebar tree */
+.sidebar { width: 280px; min-width: 150px; background: var(--bg-sidebar); border-right: 1px solid var(--border); overflow-y: auto; flex-shrink: 0; padding: 8px 0; }
+.resize-handle { width: 4px; cursor: col-resize; background: transparent; flex-shrink: 0; transition: background 0.15s; }
+.resize-handle:hover, .resize-handle.dragging { background: var(--accent); }
+.tree-item { display: flex; align-items: center; gap: 6px; padding: 4px 12px 4px 0; cursor: pointer; font-size: 13px; color: var(--text-dim); transition: all 0.1s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tree-item:hover { color: var(--text); background: rgba(255,255,255,0.03); }
+.tree-item.active { color: #fff; background: rgba(160,160,160,0.25); box-shadow: inset 3px 0 0 var(--accent); }
+.tree-item .arrow { width: 16px; text-align: center; font-size: 10px; flex-shrink: 0; color: var(--text-muted); transition: transform 0.15s; }
+.tree-item .arrow.open { transform: rotate(90deg); }
+.tree-item .icon { width: 18px; text-align: center; flex-shrink: 0; font-size: 14px; }
+.tree-item .label { overflow: hidden; text-overflow: ellipsis; }
+.tree-item .count-badge { margin-left: auto; font-size: 10px; color: var(--text-muted); background: rgba(255,255,255,0.05); padding: 0 5px; border-radius: 8px; flex-shrink: 0; }
+.tree-children { display: none; }
+.tree-children.open { display: block; }
+.tree-section { padding: 12px 12px 4px 12px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); }
+
+/* Detail panel */
+.detail { flex: 1; overflow-y: auto; padding: 24px 32px; }
+.detail-title { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+.detail-subtitle { font-size: 12px; color: var(--text-dim); margin-bottom: 4px; }
+.detail-section { margin-bottom: 24px; }
+.detail-section-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 10px; }
+
+/* Pills */
+.pill { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 600; border: 1px solid; line-height: 1.6; margin: 1px; }
+.pill-user { color: var(--scope-user); border-color: var(--scope-user); background: rgba(74,158,255,0.1); }
+.pill-project { color: var(--scope-project); border-color: var(--scope-project); background: rgba(74,222,128,0.1); }
+.pill-plugin { color: var(--scope-plugin); border-color: var(--scope-plugin); background: rgba(167,139,250,0.1); }
+.pill-managed { color: var(--scope-managed); border-color: var(--scope-managed); background: rgba(248,113,113,0.1); }
+.pill-local { color: var(--scope-local); border-color: var(--scope-local); background: rgba(156,163,175,0.1); }
+.pill-green { color: var(--dot-green); border-color: var(--dot-green); background: rgba(74,222,128,0.1); }
+.pill-red { color: var(--dot-red); border-color: var(--dot-red); background: rgba(248,113,113,0.1); }
+.pill-accent { color: var(--accent); border-color: var(--accent); background: rgba(160,160,160,0.1); }
+.pill-dim { color: var(--text-dim); border-color: var(--border); background: rgba(255,255,255,0.03); }
+.pills { display: flex; flex-wrap: wrap; gap: 4px; }
+
+/* Dot */
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+.dot-green { background: var(--dot-green); }
+.dot-yellow { background: var(--dot-yellow); }
+.dot-red { background: var(--dot-red); }
+.dot-gray { background: var(--dot-gray); }
+
+/* File path */
+.fpath { font-family: 'Cascadia Code','Consolas', monospace; font-size: 11px; color: var(--text-muted); background: rgba(255,255,255,0.03); padding: 2px 6px; border-radius: 4px; word-break: break-all; display: inline-block; margin-top: 4px; }
+.detail-path { font-family: 'Cascadia Code','Consolas', monospace; font-size: 11px; color: var(--text-dim); margin: 2px 0 16px 0; word-break: break-all; }
+
+/* JSON viewer */
+.json-toggle { cursor: pointer; user-select: none; }
+.json-toggle:hover { opacity: 0.8; }
+.json-toggle .json-summary { color: var(--text-muted); font-size: 11px; font-family: 'Cascadia Code','Consolas', monospace; }
+.json-block { font-family: 'Cascadia Code','Consolas', monospace; font-size: 12px; line-height: 1.6; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; padding: 12px 16px; margin-top: 6px; overflow-x: auto; white-space: pre-wrap; word-break: break-all; }
+.json-block .json-key { color: #8bb8e8; }
+.json-block .json-str { color: #a5d6a7; }
+.json-block .json-num { color: #f4b87c; }
+.json-block .json-bool { color: #ce93d8; }
+.json-block .json-null { color: var(--text-muted); }
+
+/* Info rows */
+.info-row { display: flex; gap: 12px; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.03); font-size: 13px; }
+.info-row:last-child { border-bottom: none; }
+.info-label { color: var(--text-muted); min-width: 100px; font-size: 12px; }
+.info-value { color: var(--text); }
+
+/* Card grid for sub-items */
+.card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 12px; cursor: pointer; transition: all 0.15s; }
+.card:hover { border-color: var(--border-light); background: var(--bg-card-hover); }
+.card-title { font-weight: 600; font-size: 13px; margin-bottom: 4px; }
+.card-desc { font-size: 11px; color: var(--text-dim); line-height: 1.5; }
+
+/* Preview */
+.preview { background: rgba(0,0,0,0.3); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; font-family: 'Cascadia Code','Consolas', monospace; font-size: 11px; color: var(--text-dim); line-height: 1.6; max-height: calc(100vh - 280px); overflow-y: auto; white-space: pre-wrap; word-break: break-word; margin-top: 8px; }
+
+/* Empty state */
+.empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+.empty-icon { font-size: 32px; margin-bottom: 10px; opacity: 0.4; }
+.empty-title { font-size: 14px; color: var(--text-dim); margin-bottom: 6px; }
+.empty-hint { font-size: 12px; line-height: 1.6; max-width: 300px; margin: 0 auto; }
+
+/* Copyable code box */
+.copy-box { display: flex; align-items: center; gap: 8px; background: rgba(0,0,0,0.3); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px 6px 12px; margin-top: 8px; font-family: 'Cascadia Code','Consolas', monospace; font-size: 11px; color: var(--text); }
+.copy-box code { flex: 1; word-break: break-all; }
+.copy-btn { background: var(--bg-card-hover); border: 1px solid var(--border); border-radius: 4px; color: var(--text-dim); font-size: 10px; padding: 3px 8px; cursor: pointer; white-space: nowrap; transition: all 0.15s; flex-shrink: 0; }
+.copy-btn:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+/* Timeline (Hooks) */
+.timeline { display: flex; align-items: flex-start; gap: 0; padding: 16px 0; overflow-x: auto; }
+.timeline-node { display: flex; flex-direction: column; align-items: center; min-width: 100px; }
+.timeline-circle { width: 36px; height: 36px; border-radius: 50%; border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 14px; background: var(--bg-card); }
+.timeline-circle.faded { opacity: 0.3; }
+.timeline-circle.active { border-color: var(--accent); box-shadow: 0 0 10px rgba(160,160,160,0.3); }
+.timeline-label { font-size: 10px; color: var(--text-dim); margin-top: 6px; text-align: center; }
+.timeline-arrow { width: 30px; height: 2px; background: var(--border); margin-top: 18px; flex-shrink: 0; }
+
+/* Stack */
+.stack { display: flex; flex-direction: column; gap: 6px; max-width: 600px; }
+.stack-layer { border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; display: flex; align-items: center; gap: 10px; position: relative; overflow: hidden; }
+.stack-layer .scope-bar { width: 4px; height: 100%; position: absolute; left: 0; top: 0; }
+
+/* Origin banner */
+.origin-banner { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 8px; margin-bottom: 16px; font-size: 12px; }
+.origin-banner .origin-icon { font-size: 18px; }
+.origin-banner .origin-text { font-weight: 600; }
+.origin-banner .origin-sub { color: var(--text-dim); font-weight: 400; margin-left: 4px; }
+.origin-personal { background: rgba(74,158,255,0.08); border: 1px solid rgba(74,158,255,0.2); color: var(--scope-user); }
+.origin-plugin { background: rgba(167,139,250,0.08); border: 1px solid rgba(167,139,250,0.2); color: var(--scope-plugin); }
+.origin-builtin { background: rgba(156,163,175,0.08); border: 1px solid rgba(156,163,175,0.2); color: var(--scope-local); }
+.origin-project { background: rgba(74,222,128,0.08); border: 1px solid rgba(74,222,128,0.2); color: var(--scope-project); }
+
+/* Inheritance strip */
+.inherit-strip { display: flex; align-items: center; gap: 6px; padding: 8px 12px; margin-bottom: 16px; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 8px; font-size: 12px; flex-wrap: wrap; }
+.inherit-strip .inherit-mode { color: var(--text-muted); font-size: 14px; flex-shrink: 0; }
+.inherit-pill { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; border: 1px solid var(--border); background: rgba(255,255,255,0.03); color: var(--text-dim); transition: all 0.15s; }
+.inherit-pill.clickable { cursor: pointer; }
+.inherit-pill.clickable:hover { border-color: var(--border-light); background: rgba(255,255,255,0.06); color: var(--text); }
+.inherit-pill.current { border-color: var(--accent); background: rgba(160,160,160,0.15); color: #fff; }
+.inherit-arrow { color: var(--text-muted); font-size: 11px; flex-shrink: 0; }
+
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-logo"><span class="cci">cci</span> <span class="product" id="productLabel">Claude Code Inspector</span></div>
+  <div class="header-meta" id="headerMeta"></div>
+</div>
+
+<div class="main">
+  <div class="sidebar" id="sidebar"></div>
+  <div class="resize-handle" id="resizeHandle"></div>
+  <div class="detail" id="detail"></div>
+</div>
+
+
+<script>
+const D = "__DASHBOARD_DATA__";
+
+const esc = s => { if(!s) return ''; const d=document.createElement('div'); d.textContent=String(s); return d.innerHTML; };
+const pill = (text, cls='dim') => `<span class="pill pill-${cls}">${esc(text)}</span>`;
+const dot = (s) => `<span class="dot dot-${s}"></span>`;
+const fpath = (p) => p ? `<span class="fpath">${esc(p)}</span>` : '';
+const pathBar = (p) => p ? `<div class="detail-path">📂 ${esc(p)}</div>` : '';
+const typeDescs = {
+  skill: 'A reusable prompt template invoked with a slash command (e.g. /deploy)',
+  command: 'A slash command bundled inside a plugin — similar to a skill but plugin-managed',
+  agent: 'A specialized Claude persona with its own model, tools, and system prompt',
+  hook: 'A shell command that runs automatically at a specific point in Claude\'s workflow',
+  plugin: 'A community package that extends Claude Code with skills, commands, agents, or hooks',
+  'mcp server': 'An external process that gives Claude new tools via the Model Context Protocol',
+  rule: 'Instructions that auto-apply when Claude works on files matching a glob pattern',
+  'memory file': 'Notes Claude saves between sessions to remember your codebase and preferences',
+  'settings file': 'JSON configuration that controls Claude\'s behavior, model, permissions, and plugins',
+  'claude.md': 'A markdown file with persistent instructions that Claude reads at the start of every session',
+  marketplace: 'A registry of plugins you can browse and install'
+};
+const typePill = (type) => `<span class="pill pill-dim" title="${esc(typeDescs[type]||'')}">${esc(type)}</span>`;
+const truncate = (s, n=200) => s && s.length > n ? s.slice(0,n)+'...' : s;
+const copyBox = (text) => `<div class="copy-box"><code>${esc(text)}</code><button class="copy-btn" onclick="navigator.clipboard.writeText('${text.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}').then(()=>{this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1500)})">Copy</button></div>`;
+
+
+function syntaxHighlight(json) {
+  return json.replace(/("(?:\\.|[^"\\])*")\s*:/g, '<span class="json-key">$1</span>:')
+    .replace(/:\s*("(?:\\.|[^"\\])*")/g, ': <span class="json-str">$1</span>')
+    .replace(/:\s*(\d+(?:\.\d+)?)/g, ': <span class="json-num">$1</span>')
+    .replace(/:\s*(true|false)/g, ': <span class="json-bool">$1</span>')
+    .replace(/:\s*(null)/g, ': <span class="json-null">$1</span>');
+}
+
+let jsonToggleId = 0;
+function jsonValue(key, val) {
+  if (typeof val !== 'object' || val === null) {
+    const display = val === true || val === false ? `<span class="json-bool">${val}</span>` : esc(String(val));
+    return `<div class="info-row"><span class="info-label">${esc(key)}</span><span class="info-value" style="font-size:12px">${display}</span></div>`;
+  }
+  const id = 'jt-' + (jsonToggleId++);
+  const pretty = syntaxHighlight(esc(JSON.stringify(val, null, 2)));
+  const count = Array.isArray(val) ? val.length + ' items' : Object.keys(val).length + ' keys';
+  let html = `<div class="info-row json-toggle" onclick="var b=document.getElementById('${id}'),a=document.getElementById('${id}-a');b.classList.toggle('hidden');a.textContent=b.classList.contains('hidden')?'▶':'▼'">`;
+  html += `<span class="info-label">${esc(key)}</span>`;
+  html += `<span class="info-value"><span class="json-summary"><span id="${id}-a">▶</span> ${count}</span></span>`;
+  html += `</div>`;
+  html += `<div id="${id}" class="json-block hidden">${pretty}</div>`;
+  return html;
+}
+
+// Build the tree data
+function buildTree() {
+  const tree = [];
+
+  const plugins = D.installedPlugins || [];
+  const pluginSkills = D.pluginSkills || [];
+  const pluginCommands = D.pluginCommands || [];
+  const pluginAgentsData = D.pluginAgents || [];
+  const pluginHooksData = D.pluginHooks || [];
+  const mcpServers = D.mcpServers || {};
+  const activeMcp = D.activeMcpTools || [];
+  const allMcp = {};
+  Object.entries(mcpServers).forEach(([n,c]) => { allMcp[n] = { config: c, tools: [] }; });
+  activeMcp.forEach(a => { if(!allMcp[a.serverName]) allMcp[a.serverName]={config:null,tools:[]}; allMcp[a.serverName].tools = a.tools||[]; });
+  const mkts = D.marketplaces ? Object.entries(D.marketplaces) : [];
+
+  // === USER (Global) ===
+  const userNode = { id:'scope-user', icon:'👤', label:'User (Global)', children: [] };
+
+  // === USER (Global) — always show all categories ===
+  const userPlugins = plugins.filter(p => p.scope !== 'project');
+  const uPlugins = { id:'user-plugins', icon:'📦', label:'Plugins', count: userPlugins.length, children: [] };
+  userPlugins.forEach(p => {
+    const name = p.name || 'unknown';
+    const skills = pluginSkills.filter(s => s.pluginName === name);
+    const cmds = pluginCommands.filter(c => c.pluginName === name);
+    const agents = pluginAgentsData.filter(a => a.pluginName === name);
+    const hooks = pluginHooksData.filter(h => h.pluginName === name);
+    const child = { id:'plugin:'+name, icon:'📦', label: name, type:'plugin', data: p, dimmed: p.enabled === false, children: [] };
+    skills.forEach(s => { child.children.push({ id:'plugin-skill:'+name+':'+s.name, icon:'⚡', label: '/'+s.name, type:'skill', data: {...s, source:'plugin', pluginName:name} }); });
+    cmds.forEach(c => { child.children.push({ id:'plugin-cmd:'+name+':'+c.name, icon:'💬', label: '/'+c.name, type:'plugin-command', data: {...c, source:'plugin', pluginName:name} }); });
+    agents.forEach(a => { child.children.push({ id:'plugin-agent:'+name+':'+a.name, icon:'🤖', label: a.name, type:'plugin-agent', data: {...a, source:'plugin', pluginName:name} }); });
+    hooks.forEach(h => { child.children.push({ id:'plugin-hook:'+name+':'+h.event, icon:'🪝', label: h.event, type:'plugin-hook', data: {...h, source:'plugin', pluginName:name} }); });
+    uPlugins.children.push(child);
+  });
+  userNode.children.push(uPlugins);
+
+  const unlinkedPlugins = plugins.filter(p => p.scope === 'project' && p.unlinked);
+  const uUnlinked = { id:'user-unlinked-plugins', icon:'🔗', label:'Unlinked Plugins', count: unlinkedPlugins.length, children: [] };
+  unlinkedPlugins.forEach(p => {
+    const name = p.name || 'unknown';
+    const label = name + (p.projectPath ? '  (' + p.projectPath + ')' : '');
+    uUnlinked.children.push({ id:'plugin:unlinked:'+name, icon:'📦', label, type:'plugin', data: p, children: [] });
+  });
+  if (unlinkedPlugins.length) userNode.children.push(uUnlinked);
+
+  const userSkills = D.userSkills || [];
+  const uSkills = { id:'user-skills', icon:'⚡', label:'Skills', count: userSkills.length, children: [] };
+  userSkills.forEach(s => { uSkills.children.push({ id:'skill:'+s.name, icon:'⚡', label: '/'+s.name, type:'skill', data: {...s, source:'personal'} }); });
+  userNode.children.push(uSkills);
+
+  const uMcp = { id:'user-mcp', icon:'🔗', label:'MCP Servers', count: Object.keys(allMcp).length, children: [] };
+  Object.entries(allMcp).forEach(([name, info]) => { uMcp.children.push({ id:'mcp:'+name, icon:'🔗', label: name, type:'mcp', data: { name, ...info } }); });
+  userNode.children.push(uMcp);
+
+  const uAgents = { id:'user-agents', icon:'🤖', label:'Agents', count: (D.userAgents||[]).length, children: [] };
+  (D.userAgents||[]).forEach(a => { uAgents.children.push({ id:'agent:'+a.name, icon:'🤖', label: a.name, type:'agent', data: {...a, scope:'user'} }); });
+  userNode.children.push(uAgents);
+
+  userNode.children.push({ id:'claudemd:user', icon: D.userClaudeMd?.exists ? '📄' : '○', label:'CLAUDE.md', type:'claudemd', data: { id:'claudemd:user', label:'User CLAUDE.md', scope:'user', data: D.userClaudeMd } });
+
+  const uRules = { id:'user-rules', icon:'📏', label:'Rules', count: (D.userRules||[]).length, children: [] };
+  (D.userRules||[]).forEach(r => { uRules.children.push({ id:'rule:u:'+r.name, icon:'📏', label: r.name, type:'rule', data: {...r, scope:'user'} }); });
+  userNode.children.push(uRules);
+
+  const uHooks = { id:'user-hooks', icon:'🪝', label:'Hooks', count: 0, children: [] };
+  if (D.userSettings?.hooks) { Object.entries(D.userSettings.hooks).forEach(([evt, h]) => { uHooks.count += Array.isArray(h)?h.length:1; }); }
+  userNode.children.push(uHooks);
+
+  userNode.children.push({ id:'settings:user', icon: D.userSettings ? '⚙️' : '○', label:'Settings', type:'settings-layer', data: { scope:'user', label:'User', data: D.userSettings } });
+
+  const mktCats = D.marketplaceCatalogs || {};
+  // Start with known marketplaces, then add any that are install-sources of plugins
+  const knownNames = new Set(mkts.map(([n]) => n));
+  const installSources = new Set(plugins.map(p => p.marketplace).filter(Boolean));
+  const extraMkts = [...installSources].filter(n => !knownNames.has(n) && mktCats[n]);
+  const mktNode = { id:'marketplaces', icon:'🏪', label:'Marketplaces', count: mkts.length + extraMkts.length, children: [] };
+  mkts.forEach(([name, cfg]) => { mktNode.children.push({ id:'mkt:'+name, icon:'🏪', label: name, type:'marketplace', data: {name, ...cfg} }); });
+  extraMkts.forEach(name => { mktNode.children.push({ id:'mkt:'+name, icon:'🏪', label: name, type:'marketplace', data: {name} }); });
+  userNode.children.push(mktNode);
+
+  // === PROJECT — always show all categories ===
+  const projPath = D.projectPath || 'Current Project';
+  const projLabel = projPath.split('\\').pop() || projPath.split('/').pop() || projPath;
+  const projNode = { id:'scope-project', icon:'📁', label:'Project (' + projLabel + ')', children: [] };
+
+  const projPlugins = plugins.filter(p => p.scope === 'project' && p.currentProject);
+  const pPlugins = { id:'proj-plugins', icon:'📦', label:'Plugins', count: projPlugins.length, children: [] };
+  projPlugins.forEach(p => {
+    const name = p.name || 'unknown';
+    const pSkillsList = pluginSkills.filter(s => s.pluginName === name);
+    const pCmds = pluginCommands.filter(c => c.pluginName === name);
+    const pAgentsList = pluginAgentsData.filter(a => a.pluginName === name);
+    const pHooks = pluginHooksData.filter(h => h.pluginName === name);
+    const child = { id:'plugin:p:'+name, icon:'📦', label: name, type:'plugin', data: p, dimmed: p.enabled === false, children: [] };
+    pSkillsList.forEach(s => { child.children.push({ id:'plugin-skill:p:'+name+':'+s.name, icon:'⚡', label: '/'+s.name, type:'skill', data: {...s, source:'plugin', pluginName:name} }); });
+    pCmds.forEach(c => { child.children.push({ id:'plugin-cmd:p:'+name+':'+c.name, icon:'💬', label: '/'+c.name, type:'plugin-command', data: {...c, source:'plugin', pluginName:name} }); });
+    pAgentsList.forEach(a => { child.children.push({ id:'plugin-agent:p:'+name+':'+a.name, icon:'🤖', label: a.name, type:'plugin-agent', data: {...a, source:'plugin', pluginName:name} }); });
+    pHooks.forEach(h => { child.children.push({ id:'plugin-hook:p:'+name+':'+h.event, icon:'🪝', label: h.event, type:'plugin-hook', data: {...h, source:'plugin', pluginName:name} }); });
+    pPlugins.children.push(child);
+  });
+  projNode.children.push(pPlugins);
+
+  const pSkills = { id:'proj-skills', icon:'⚡', label:'Skills', count: (D.projectSkills||[]).length, children: [] };
+  (D.projectSkills||[]).forEach(s => { pSkills.children.push({ id:'skill:p:'+s.name, icon:'⚡', label: '/'+s.name, type:'skill', data: {...s, source:'project'} }); });
+  projNode.children.push(pSkills);
+
+  const pMcp = { id:'proj-mcp', icon:'🔗', label:'MCP Servers', count: Object.keys(D.projectMcp?.mcpServers||{}).length, children: [] };
+  Object.entries(D.projectMcp?.mcpServers||{}).forEach(([name, cfg]) => { pMcp.children.push({ id:'mcp:p:'+name, icon:'🔗', label: name, type:'mcp', data: { name, config: cfg, tools: [] } }); });
+  projNode.children.push(pMcp);
+
+  const pAgents = { id:'proj-agents', icon:'🤖', label:'Agents', count: (D.projectAgents||[]).length, children: [] };
+  (D.projectAgents||[]).forEach(a => { pAgents.children.push({ id:'agent:p:'+a.name, icon:'🤖', label: a.name, type:'agent', data: {...a, scope:'project'} }); });
+  projNode.children.push(pAgents);
+
+  projNode.children.push({ id:'claudemd:project', icon: D.projectClaudeMd?.exists ? '📄' : '○', label:'CLAUDE.md', type:'claudemd', data: { id:'claudemd:project', label:'Project CLAUDE.md', scope:'project', data: D.projectClaudeMd } });
+  projNode.children.push({ id:'claudemd:local', icon: D.localClaudeMd?.exists ? '📄' : '○', label:'CLAUDE.local.md', type:'claudemd', data: { id:'claudemd:local', label:'Local CLAUDE.md', scope:'local', data: D.localClaudeMd } });
+
+  const pRules = { id:'proj-rules', icon:'📏', label:'Rules', count: (D.projectRules||[]).length, children: [] };
+  (D.projectRules||[]).forEach(r => { pRules.children.push({ id:'rule:p:'+r.name, icon:'📏', label: r.name, type:'rule', data: {...r, scope:'project'} }); });
+  projNode.children.push(pRules);
+
+  const pHooks = { id:'proj-hooks', icon:'🪝', label:'Hooks', count: 0, children: [] };
+  if (D.projectSettings?.hooks) { Object.entries(D.projectSettings.hooks).forEach(([evt, h]) => { pHooks.count += Array.isArray(h)?h.length:1; }); }
+  projNode.children.push(pHooks);
+
+  const pMemory = { id:'proj-memory', icon:'🧠', label:'Auto Memory', count: (D.autoMemory||[]).length, children: [] };
+  (D.autoMemory||[]).forEach(m => { pMemory.children.push({ id:'memory:'+m.name, icon:'📝', label: m.name, type:'memory-file', data: m }); });
+  projNode.children.push(pMemory);
+
+  projNode.children.push({ id:'settings:project', icon: D.projectSettings ? '⚙️' : '○', label:'Settings', type:'settings-layer', data: { scope:'project', label:'Project', data: D.projectSettings } });
+  projNode.children.push({ id:'settings:local', icon: D.localSettings ? '⚙️' : '○', label:'Local Settings', type:'settings-layer', data: { scope:'local', label:'Local', data: D.localSettings } });
+
+  tree.push(userNode);
+  tree.push(projNode);
+
+  return tree;
+}
+
+// Render sidebar tree
+function renderSidebar() {
+  const tree = buildTree();
+  const sb = document.getElementById('sidebar');
+  sb.innerHTML = renderTreeNodes(tree, 0);
+}
+
+function renderTreeNodes(nodes, depth) {
+  return nodes.map(n => {
+    const hasChildren = n.children && n.children.length > 0;
+    const isFolder = Array.isArray(n.children);
+    const isUnconfiguredLeaf = !isFolder && n.type === 'claudemd' && !n.data?.data?.exists;
+    const isUnconfiguredSettings = !isFolder && n.type === 'settings-layer' && !n.data?.data;
+    const isEmpty = (isFolder && !hasChildren && !n.type) || isUnconfiguredLeaf || isUnconfiguredSettings;
+    const pad = 12 + depth * 16;
+    const countBadge = n.count != null ? `<span class="count-badge">${n.count}</span>` : '';
+    const dimStyle = (isEmpty || n.dimmed) ? 'opacity:0.35;' : '';
+    let html = `<div class="tree-item" data-id="${n.id}" style="padding-left:${pad}px;${dimStyle}" onclick="treeClick('${n.id}', event)">`;
+    html += `<span class="arrow ${hasChildren ? '' : 'empty'}" data-id="${n.id}">${hasChildren ? '▶' : ''}</span>`;
+    html += `<span class="icon">${n.icon}</span>`;
+    html += `<span class="label">${esc(n.label)}</span>`;
+    html += countBadge;
+    html += `</div>`;
+    if (hasChildren) {
+      html += `<div class="tree-children" data-parent="${n.id}">${renderTreeNodes(n.children, depth+1)}</div>`;
+    }
+    return html;
+  }).join('');
+}
+
+// Store tree data globally for detail views
+let treeData = [];
+function findNode(id, nodes) {
+  for (const n of nodes) {
+    if (n.id === id) return n;
+    if (n.children) { const f = findNode(id, n.children); if (f) return f; }
+  }
+  return null;
+}
+
+function treeClick(id, event) {
+  // Toggle children
+  const childEl = document.querySelector(`.tree-children[data-parent="${id}"]`);
+  const arrowEl = document.querySelector(`.arrow[data-id="${id}"]`);
+  if (childEl) {
+    childEl.classList.toggle('open');
+    arrowEl?.classList.toggle('open');
+  }
+  // Show detail
+  document.querySelectorAll('.tree-item').forEach(el => el.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+  const node = findNode(id, treeData);
+  if (node) showDetail(node);
+}
+
+function navigateToNode(id) {
+  const item = document.querySelector(`.tree-item[data-id="${id}"]`);
+  if (!item) return;
+  // Open all parent folders
+  let parent = item.parentElement;
+  while (parent) {
+    if (parent.classList.contains('tree-children')) {
+      parent.classList.add('open');
+      const pid = parent.getAttribute('data-parent');
+      const arrow = document.querySelector(`.arrow[data-id="${pid}"]`);
+      if (arrow) arrow.classList.add('open');
+    }
+    parent = parent.parentElement;
+  }
+  // Highlight
+  document.querySelectorAll('.tree-item').forEach(el => el.classList.remove('active'));
+  item.classList.add('active');
+  item.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  // Show detail
+  const node = findNode(id, treeData);
+  if (node) showDetail(node);
+}
+
+function renderInheritStrip(category, currentScope) {
+  const chains = {
+    claudemd: { mode: 'cascade', scopes: [
+      { key: 'user', label: 'User', nodeId: 'claudemd:user', configured: !!D.userClaudeMd?.exists },
+      { key: 'project', label: 'Project', nodeId: 'claudemd:project', configured: !!D.projectClaudeMd?.exists },
+      { key: 'local', label: 'Local (.gitignore)', nodeId: 'claudemd:local', configured: !!D.localClaudeMd?.exists }
+    ]},
+    settings: { mode: 'cascade', scopes: [
+      { key: 'user', label: 'User', nodeId: 'settings:user', configured: !!(D.userSettings && Object.keys(D.userSettings).filter(k=>k!=='$schema').length) },
+      { key: 'project', label: 'Project', nodeId: 'settings:project', configured: !!(D.projectSettings && Object.keys(D.projectSettings).filter(k=>k!=='$schema').length) },
+      { key: 'local', label: 'Local (.gitignore)', nodeId: 'settings:local', configured: !!(D.localSettings && Object.keys(D.localSettings).filter(k=>k!=='$schema').length) }
+    ]},
+    hooks: { mode: 'additive', scopes: [
+      { key: 'user', label: 'User', nodeId: 'user-hooks', configured: !!(D.userSettings?.hooks && Object.keys(D.userSettings.hooks).length) },
+      { key: 'project', label: 'Project', nodeId: 'proj-hooks', configured: !!(D.projectSettings?.hooks && Object.keys(D.projectSettings.hooks).length) }
+    ]},
+    rules: { mode: 'additive', scopes: [
+      { key: 'user', label: 'User', nodeId: 'user-rules', configured: (D.userRules||[]).length > 0 },
+      { key: 'project', label: 'Project', nodeId: 'proj-rules', configured: (D.projectRules||[]).length > 0 }
+    ]},
+    skills: { mode: 'additive', scopes: [
+      { key: 'user', label: 'User', nodeId: 'user-skills', configured: (D.userSkills||[]).length > 0 },
+      { key: 'project', label: 'Project', nodeId: 'proj-skills', configured: (D.projectSkills||[]).length > 0 }
+    ]},
+    mcp: { mode: 'additive', scopes: [
+      { key: 'user', label: 'User', nodeId: 'user-mcp', configured: Object.keys(D.mcpServers||{}).length > 0 || (D.activeMcpTools||[]).length > 0 },
+      { key: 'project', label: 'Project', nodeId: 'proj-mcp', configured: Object.keys(D.projectMcp?.mcpServers||{}).length > 0 }
+    ]},
+    plugins: { mode: 'additive', scopes: [
+      { key: 'user', label: 'User', nodeId: 'user-plugins', configured: (D.installedPlugins||[]).filter(p=>p.scope!=='project').length > 0 },
+      { key: 'project', label: 'Project', nodeId: 'proj-plugins', configured: (D.installedPlugins||[]).filter(p=>p.scope==='project').length > 0 }
+    ]},
+    agents: { mode: 'additive', scopes: [
+      { key: 'user', label: 'User', nodeId: 'user-agents', configured: (D.userAgents||[]).length > 0 },
+      { key: 'project', label: 'Project', nodeId: 'proj-agents', configured: (D.projectAgents||[]).length > 0 }
+    ]}
+  };
+  const chain = chains[category];
+  if (!chain) return '';
+  if (chain.scopes.length <= 1) return '';
+  const isCascade = chain.mode === 'cascade';
+  const modeIcon = isCascade ? '↕' : '+';
+  const sep = isCascade ? '→' : '+';
+  let html = '<div class="inherit-strip">';
+  // mode icon removed — arrows/plus between pills already communicate the relationship
+  chain.scopes.forEach((scope, i) => {
+    if (i > 0) html += `<span class="inherit-arrow">${sep}</span>`;
+    const isCurrent = scope.key === currentScope;
+    const cls = ['inherit-pill', 'scope-' + scope.key];
+    if (isCurrent) cls.push('current');
+    if (!isCurrent) cls.push('clickable');
+    const onclick = isCurrent ? '' : ` onclick="navigateToNode('${scope.nodeId}')"`;
+    html += `<span class="${cls.join(' ')}"${onclick}>${scope.label}</span>`;
+  });
+  html += '</div>';
+  return html;
+}
+
+// Detail views
+function showDetail(node) {
+  const el = document.getElementById('detail');
+  if (node.type === 'plugin') return showPlugin(el, node);
+  if (node.type === 'skill') return showSkill(el, node);
+  if (node.type === 'plugin-command') return showPluginCommand(el, node);
+  if (node.type === 'plugin-agent') return showPluginAgent(el, node);
+  if (node.type === 'plugin-hook') return showPluginHook(el, node);
+  if (node.type === 'mcp') return showMcp(el, node);
+  if (node.type === 'claudemd') return showClaudeMd(el, node);
+  if (node.type === 'memory-file') return showMemoryFile(el, node);
+  if (node.type === 'rule') return showRule(el, node);
+  if (node.type === 'agent') return showAgent(el, node);
+  if (node.type === 'hook') return showHook(el, node);
+  if (node.type === 'settings-layer') return showSettingsLayer(el, node);
+  if (node.type === 'marketplace') return showMarketplace(el, node);
+  // Scope nodes — just expand in tree, clear detail
+  if (node.id?.startsWith('scope-')) { el.innerHTML = ''; return; }
+  // Folder nodes - show summary
+  showFolder(el, node);
+}
+
+function showFolder(el, node) {
+  const childCount = node.children?.length || 0;
+  const folderInherit = {
+    'user-hooks':['hooks','user'], 'proj-hooks':['hooks','project'],
+    'user-rules':['rules','user'], 'proj-rules':['rules','project'],
+    'user-skills':['skills','user'], 'proj-skills':['skills','project'],
+    'user-mcp':['mcp','user'], 'proj-mcp':['mcp','project'],
+    'user-plugins':['plugins','user'], 'proj-plugins':['plugins','project'],
+    'user-agents':['agents','user'], 'proj-agents':['agents','project']
+  };
+  let html = `<div class="detail-title">${node.icon} ${esc(node.label)}</div>`;
+  html += `<div class="detail-subtitle">${childCount} items</div>`;
+  const fi = folderInherit[node.id];
+  if (fi) html += renderInheritStrip(fi[0], fi[1]);
+  if (node.children?.length) {
+    html += `<div class="card-grid">`;
+    node.children.forEach(c => {
+      html += `<div class="card" onclick="navigateToNode('${c.id}')"><div class="card-title">${c.icon} ${esc(c.label)}</div>`;
+      if (c.data?.description) html += `<div class="card-desc">${esc(truncate(c.data.description, 100))}</div>`;
+      if (c.data?.marketplace) html += `<div style="margin-top:4px">${pill(c.data.marketplace, 'plugin')}</div>`;
+      if (c.children?.length) html += `<div class="card-desc">${c.children.length} items inside</div>`;
+      html += `</div>`;
+    });
+    html += `</div>`;
+  } else {
+    const emptyGuides = {
+      'user-rules': { what: 'Tired of repeating the same instructions? Rules let you say it once and have Claude follow it every time it touches matching files.', example: 'A rule for <code>*.test.ts</code> could say "always use describe/it blocks and prefer toBe over toEqual."', create: 'Create a markdown file with a <code>paths:</code> frontmatter field and your instructions.', copy: '~/.claude/rules/testing.md' },
+      'proj-rules': { what: 'Keep your team consistent. Rules automatically apply instructions whenever Claude works on files matching a pattern — no one has to remember to ask.', example: 'A rule for <code>src/api/**</code> could say "always validate input with zod and return typed errors."', create: 'Create a markdown file with a <code>paths:</code> frontmatter field and your instructions.', copy: '.claude/rules/api-style.md' },
+      'user-hooks': { what: 'Want Claude to automatically lint, test, or validate before making changes? Hooks run your shell commands at key moments in Claude\'s workflow.', example: 'A PreToolUse hook on <code>Write</code> could lint files before Claude writes them.', create: 'Add a <code>"hooks"</code> section to your settings file.', copy: '~/.claude/settings.json' },
+      'proj-hooks': { what: 'Enforce team standards automatically. Hooks run shell commands before/after Claude uses tools — great for linting, logging, or validation.', example: 'A PostToolUse hook on <code>Bash</code> could log every command Claude runs.', create: 'Add a <code>"hooks"</code> section to your project settings file.', copy: '.claude/settings.json' },
+      'user-skills': { what: 'Find yourself giving Claude the same complex instructions over and over? Package them into a skill you invoke with one command like <code>/deploy</code>.', example: 'A <code>/deploy</code> skill could run your build, test, and deploy pipeline in sequence.', create: 'Create a SKILL.md with YAML frontmatter and instructions.', copy: '~/.claude/skills/my-skill/SKILL.md' },
+      'proj-skills': { what: 'Share repeatable workflows with your team. Project skills live in the repo so everyone can use <code>/review</code> or <code>/setup</code> the same way.', example: 'A <code>/review</code> skill could enforce your team\'s code review checklist.', create: 'Create a SKILL.md with YAML frontmatter and instructions.', copy: '.claude/skills/my-skill/SKILL.md' },
+      'user-mcp': { what: 'Claude can only read files and run commands by default. MCP servers unlock new abilities — browsing the web, querying databases, calling APIs.', example: 'A Playwright MCP server lets Claude control a browser for testing.', create: 'Add servers under the <code>"mcpServers"</code> field.', copy: '~/.claude.json' },
+      'proj-mcp': { what: 'Give your whole team the same external tool access. Project MCP servers are committed to the repo so everyone gets the same capabilities.', example: 'An Azure DevOps MCP server lets Claude create PRs and query work items.', create: 'Create a JSON file with a <code>"mcpServers"</code> field in your project root.', copy: '.mcp.json' },
+      'user-agents': { what: 'Need Claude to behave differently for different tasks? Agents are specialized personas with their own instructions, model, and tool access.', example: 'A "reviewer" agent could use haiku for fast code review with read-only tools.', create: 'Create a markdown file with YAML frontmatter (name, model, tools) and a system prompt.', copy: '~/.claude/agents/my-agent.md' },
+      'proj-agents': { what: 'Share specialized Claude personas with your team. Project agents let everyone use the same "tester" or "reviewer" persona from the repo.', example: 'A "tester" agent could focus on writing tests with access only to Read, Write, and Bash.', create: 'Create a markdown file with YAML frontmatter and a system prompt.', copy: '.claude/agents/my-agent.md' },
+      'user-plugins': { what: 'Get new skills and tools instantly. Plugins are community packages that extend Claude Code — install once and they\'re available everywhere.', example: 'The <code>superpowers</code> plugin adds skills for brainstorming, debugging, and TDD workflows.', create: 'Run this command in Claude Code to browse and install from marketplaces.', copy: '/plugins' },
+      'proj-plugins': { what: 'Need a plugin only for this repo? Project-scoped plugins activate just for this project, keeping your global setup clean.', example: 'A <code>pr-review-toolkit</code> plugin could add PR review skills just for this repo.', create: 'Run <code>/plugins</code> and choose "project" scope when installing.', copy: '/plugins' },
+      'proj-memory': { what: 'Claude forgets everything between sessions. Auto memory fixes that — Claude saves notes about your codebase so it doesn\'t start from scratch each time.', example: 'Claude might save <code>debugging.md</code> noting "the auth module uses JWT with RS256, tokens expire in 1h."', create: 'Just tell Claude "remember that..." or it will save memories automatically when it discovers stable patterns.', copy: null }
+    };
+    const guide = emptyGuides[node.id];
+    if (guide) {
+      html += `<div style="display:flex;flex-direction:column;align-items:center;padding:40px 20px;max-width:440px;margin:0 auto">`;
+      html += `<div style="font-size:36px;opacity:0.4;margin-bottom:16px">${node.icon}</div>`;
+      html += `<div style="color:var(--text);font-size:13px;line-height:1.6;text-align:center;margin-bottom:20px">${guide.what}</div>`;
+      html += `<div style="width:100%;border:1px solid var(--border);border-radius:8px;padding:14px 16px;background:var(--bg-card);margin-bottom:14px">`;
+      html += `<div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);margin-bottom:6px;font-weight:600">Example</div>`;
+      html += `<div style="font-size:12px;color:var(--text);line-height:1.6">${guide.example}</div>`;
+      html += `</div>`;
+      html += `<div style="width:100%;border:1px solid var(--border);border-radius:8px;padding:14px 16px;background:var(--bg-card)">`;
+      html += `<div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);margin-bottom:6px;font-weight:600">How to create</div>`;
+      html += `<div style="font-size:12px;color:var(--text);line-height:1.6">${guide.create}</div>`;
+      if (guide.copy) html += copyBox(guide.copy);
+      html += `</div>`;
+      html += `</div>`;
+    }
+  }
+  el.innerHTML = html;
+}
+
+function showPlugin(el, node) {
+  const p = node.data;
+  const all = node.children || [];
+  const skills = all.filter(c => c.type === 'skill');
+  const cmds = all.filter(c => c.type === 'plugin-command');
+  const agents = all.filter(c => c.type === 'plugin-agent');
+  const hooks = all.filter(c => c.type === 'plugin-hook');
+  let html = `<div class="detail-title">📦 ${esc(p.name)}</div>`;
+  html += `<div class="detail-subtitle">${typePill('plugin')} from ${pill(p.marketplace || '', 'plugin')}</div>`;
+  html += pathBar(p.installPath);
+  html += `<div class="detail-section">`;
+  if (p.enabled === false) html += `<div class="info-row"><span class="info-label">Status</span><span class="info-value">${dot('red')} disabled</span></div>`;
+  html += `<div class="info-row"><span class="info-label">Version</span><span class="info-value">${esc(p.version||'')}</span></div>`;
+  html += `<div class="info-row"><span class="info-label">Scope</span><span class="info-value">${pill(p.scope||'user','user')}</span></div>`;
+  if (p.marketplace) html += `<div class="info-row"><span class="info-label">Marketplace</span><span class="info-value">${esc(p.marketplace)}</span></div>`;
+  if (p.installedAt) html += `<div class="info-row"><span class="info-label">Installed</span><span class="info-value">${esc(p.installedAt)}</span></div>`;
+  const parts = [];
+  if (skills.length) parts.push(skills.length + ' skills');
+  if (cmds.length) parts.push(cmds.length + ' commands');
+  if (agents.length) parts.push(agents.length + ' agents');
+  if (hooks.length) parts.push(hooks.length + ' hooks');
+  if (parts.length) html += `<div class="info-row"><span class="info-label">Contains</span><span class="info-value">${parts.join(', ')}</span></div>`;
+  html += `</div>`;
+  const sections = [
+    { items: skills, title: 'Skills', icon: '⚡' },
+    { items: cmds, title: 'Commands', icon: '💬' },
+    { items: agents, title: 'Agents', icon: '🤖' },
+    { items: hooks, title: 'Hooks', icon: '🪝' }
+  ];
+  sections.forEach(sec => {
+    if (!sec.items.length) return;
+    html += `<div class="detail-section"><div class="detail-section-title">${sec.title}</div><div class="card-grid">`;
+    sec.items.forEach(c => {
+      html += `<div class="card" onclick="navigateToNode('${c.id}')"><div class="card-title">${sec.icon} ${esc(c.label)}</div>`;
+      if (c.data?.description) html += `<div class="card-desc">${esc(truncate(c.data.description, 100))}</div>`;
+      html += `</div>`;
+    });
+    html += `</div></div>`;
+  });
+  el.innerHTML = html;
+}
+
+function showPluginCommand(el, node) {
+  const c = node.data;
+  let html = `<div class="detail-title">💬 /${esc(c.name)}</div>`;
+  html += `<div class="detail-subtitle">${typePill('command')} from plugin "${esc(c.pluginName)}"</div>`;
+  html += `<div class="detail-section">`;
+  if (c.description) html += `<div class="info-row"><span class="info-label">Description</span><span class="info-value">${esc(c.description)}</span></div>`;
+  if (c.argumentHint) html += `<div class="info-row"><span class="info-label">Arguments</span><span class="info-value"><code>${esc(c.argumentHint)}</code></span></div>`;
+  html += `</div>`;
+  el.innerHTML = html;
+}
+
+function showPluginAgent(el, node) {
+  const a = node.data;
+  let html = `<div class="detail-title">🤖 ${esc(a.name)}</div>`;
+  html += `<div class="detail-subtitle">${typePill('agent')} from plugin "${esc(a.pluginName)}"</div>`;
+  html += `<div class="detail-section">`;
+  if (a.description) html += `<div class="info-row"><span class="info-label">Description</span><span class="info-value">${esc(truncate(a.description, 200))}</span></div>`;
+  if (a.model) html += `<div class="info-row"><span class="info-label">Model</span><span class="info-value">${pill(a.model,'accent')}</span></div>`;
+  html += `</div>`;
+  el.innerHTML = html;
+}
+
+function showPluginHook(el, node) {
+  const h = node.data;
+  let html = `<div class="detail-title">🪝 ${esc(h.event)}</div>`;
+  html += `<div class="detail-subtitle">${typePill('hook')} from plugin "${esc(h.pluginName)}"</div>`;
+  html += `<div class="detail-section">`;
+  if (h.description) html += `<div class="info-row"><span class="info-label">Description</span><span class="info-value">${esc(h.description)}</span></div>`;
+  html += `</div>`;
+  el.innerHTML = html;
+}
+
+function showSkill(el, node) {
+  const s = node.data;
+  let html = `<div class="detail-title">⚡ /${esc(s.name)}</div>`;
+  if (s.source === 'plugin') {
+    html += `<div class="detail-subtitle">${typePill('skill')} from plugin "${esc(s.pluginName)}"</div>`;
+  } else {
+    html += `<div class="detail-subtitle">${typePill('skill')} · personal</div>`;
+  }
+  html += pathBar(s.path);
+  html += `<div class="detail-section">`;
+  if (s.description) html += `<div class="info-row"><span class="info-label">Description</span><span class="info-value">${esc(s.description)}</span></div>`;
+  const invoc = s.disableModelInvocation ? 'user-only' : 'both user & Claude';
+  html += `<div class="info-row"><span class="info-label">Who can invoke</span><span class="info-value">${pill(invoc, s.disableModelInvocation?'user':'green')}</span></div>`;
+  if (s.allowedTools) html += `<div class="info-row"><span class="info-label">Tools</span><span class="info-value"><div class="pills">${s.allowedTools.split(',').map(t=>pill(t.trim(),'dim')).join('')}</div></span></div>`;
+  if (s.argumentHint) html += `<div class="info-row"><span class="info-label">Arguments</span><span class="info-value"><code>${esc(s.argumentHint)}</code></span></div>`;
+  html += `</div>`;
+  el.innerHTML = html;
+}
+
+function showMcp(el, node) {
+  const m = node.data;
+  const cfg = m.config || {};
+  const transport = cfg.type || (cfg.command ? 'stdio' : '?');
+  const mcpFile = node.id.startsWith('mcp:p:') ? D.projectPath+'/.mcp.json' : D.homePath+'/.claude.json';
+  let html = `<div class="detail-title">🔌 ${esc(m.name)}</div>`;
+  html += `<div class="detail-subtitle">${typePill('mcp server')} · ${pill(transport,'dim')} transport · ${m.tools.length} tools</div>`;
+  html += pathBar(mcpFile);
+  html += `<div class="detail-section">`;
+  if (cfg.command) html += `<div class="info-row"><span class="info-label">Command</span><span class="info-value">${fpath(cfg.command + (cfg.args ? ' ' + cfg.args.join(' ') : ''))}</span></div>`;
+  if (cfg.url) html += `<div class="info-row"><span class="info-label">URL</span><span class="info-value">${fpath(cfg.url)}</span></div>`;
+  html += `</div>`;
+  if (m.tools.length) {
+    html += `<div class="detail-section"><div class="detail-section-title">${m.tools.length} Tools</div><div class="pills">${m.tools.map(t => pill(t,'dim')).join('')}</div></div>`;
+  }
+  el.innerHTML = html;
+}
+
+function showClaudeMd(el, node) {
+  const m = node.data;
+  const exists = m.data?.exists;
+  const scopeColors = {managed:'managed',project:'project',user:'user',local:'local'};
+  let html = `<div class="detail-title">📄 ${esc(m.label)}</div>`;
+  html += `<div class="detail-subtitle">${typePill('claude.md')}</div>`;
+  html += pathBar(m.data?.path);
+  html += renderInheritStrip('claudemd', m.scope);
+  if (exists && m.data?.content) {
+    html += `<div class="detail-section"><div class="detail-section-title">Content</div><div class="preview">${esc(m.data.content)}</div></div>`;
+  }
+  if (!exists) {
+    const paths = {managed:'C:\\\\Program Files\\\\ClaudeCode\\\\CLAUDE.md', project:'./CLAUDE.md', user:'~/.claude/CLAUDE.md', local:'./CLAUDE.local.md'};
+    const claudeGuides = {
+      user: { what: 'Stop repeating yourself across projects. This file gives Claude your personal preferences once — coding style, tool choices, communication tone — and they apply everywhere.', example: '"Always use TypeScript strict mode. Prefer functional patterns. Explain your reasoning before writing code."', create: 'Create this file with your instructions in plain markdown.', copy: '~/.claude/CLAUDE.md' },
+      project: { what: 'Get your whole team on the same page. This file lives in the repo so every teammate\'s Claude follows the same project conventions, architecture decisions, and coding standards.', example: '"This is a Next.js app. API routes are in src/api/. Always use zod for validation. Never import from internal packages directly."', create: 'Create this file in your project root with project-specific instructions.', copy: 'CLAUDE.md' },
+      local: { what: 'Need personal instructions just for this project without affecting the team? This file is gitignored — only your Claude sees it.', example: '"I\'m working on the auth module this sprint. Always run tests after changes. Use verbose git commit messages."', create: 'Create this file in your project root. It\'s automatically gitignored.', copy: 'CLAUDE.local.md' }
+    };
+    const cg = claudeGuides[m.scope];
+    if (cg) {
+      html += `<div style="display:flex;flex-direction:column;align-items:center;padding:40px 20px;max-width:440px;margin:0 auto">`;
+      html += `<div style="font-size:36px;opacity:0.7;margin-bottom:16px">📄</div>`;
+      html += `<div style="color:var(--text);font-size:13px;line-height:1.6;text-align:center;margin-bottom:20px">${cg.what}</div>`;
+      html += `<div style="width:100%;border:1px solid var(--border);border-radius:8px;padding:14px 16px;background:var(--bg-card);margin-bottom:14px">`;
+      html += `<div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:6px;font-weight:600">Example content</div>`;
+      html += `<div style="font-size:12px;color:var(--text);line-height:1.6;font-style:italic">${cg.example}</div>`;
+      html += `</div>`;
+      html += `<div style="width:100%;border:1px solid var(--border);border-radius:8px;padding:14px 16px;background:var(--bg-card)">`;
+      html += `<div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:6px;font-weight:600">How to create</div>`;
+      html += `<div style="font-size:12px;color:var(--text);line-height:1.6">${cg.create}</div>`;
+      if (cg.copy) html += copyBox(cg.copy);
+      html += `</div>`;
+      html += `</div>`;
+    } else {
+      html += `<div class="empty-state"><div class="empty-icon">📄</div><div class="empty-title">Not configured</div><div class="empty-hint">Create this file at ${fpath(paths[m.scope]||'')}</div></div>`;
+    }
+  }
+  el.innerHTML = html;
+}
+
+function showMemoryFile(el, node) {
+  const m = node.data;
+  let html = `<div class="detail-title">📝 ${esc(m.name)}</div>`;
+  html += `<div class="detail-subtitle">${typePill('memory file')}</div>`;
+  html += pathBar(m.path);
+  if (m.preview) html += `<div class="preview">${esc(m.preview)}</div>`;
+  el.innerHTML = html;
+}
+
+function showRule(el, node) {
+  const r = node.data;
+  let html = `<div class="detail-title">📏 ${esc(r.name)}</div>`;
+  html += `<div class="detail-subtitle">${typePill('rule')} · ${pill(r.scope,'project')}</div>`;
+  html += pathBar(r.path);
+  if (r.paths) html += `<div class="detail-section"><div class="detail-section-title">Applies to</div><div class="pills">${r.paths.map(p=>pill(p,'accent')).join('')}</div></div>`;
+  if (r.content) html += `<div class="detail-section"><div class="detail-section-title">Content</div><div class="preview">${esc(r.content)}</div></div>`;
+  el.innerHTML = html;
+}
+
+function showAgent(el, node) {
+  const a = node.data;
+  let html = `<div class="detail-title">🤖 ${esc(a.name)}</div>`;
+  const agentSource = a.scope === 'built-in' ? '· built-in' : a.scope === 'project' ? '· project' : '· personal';
+  html += `<div class="detail-subtitle">${typePill('agent')} ${agentSource}</div>`;
+  html += pathBar(a.path);
+  html += `<div class="detail-section">`;
+  if (a.description) html += `<div class="info-row"><span class="info-label">Description</span><span class="info-value">${esc(a.description)}</span></div>`;
+  if (a.model) html += `<div class="info-row"><span class="info-label">Model</span><span class="info-value">${pill(a.model,'accent')}</span></div>`;
+  if (a.tools) html += `<div class="info-row"><span class="info-label">Tools</span><span class="info-value">${pill(a.tools, a.tools==='All'?'green':'user')}</span></div>`;
+  html += `</div>`;
+  el.innerHTML = html;
+}
+
+function showHook(el, node) {
+  const h = node.data;
+  // Check if any hooks are configured for this event
+  let configured = [];
+  for (const [src, label] of [[D.userSettings,'user'],[D.projectSettings,'project'],[D.localSettings,'local']]) {
+    if (src?.hooks?.[h.name]) {
+      const handlers = src.hooks[h.name];
+      (Array.isArray(handlers)?handlers:[handlers]).forEach(hh => configured.push({...hh, scope:label}));
+    }
+  }
+  const hookFile = configured.length ? (configured[0].scope === 'user' ? D.homePath+'/.claude/settings.json' : D.projectPath+'/.claude/settings.json') : null;
+  let html = `<div class="detail-title">${h.icon||'🔗'} ${esc(h.name)}</div>`;
+  html += `<div class="detail-subtitle">${typePill('hook')} · ${esc(h.description)}</div>`;
+  html += pathBar(hookFile);
+  if (configured.length) {
+    html += `<div class="detail-section"><div class="detail-section-title">Configured Hooks</div>`;
+    configured.forEach(c => {
+      html += `<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px">`;
+      html += `${pill(c.scope,'user')} `;
+      if (c.matcher) html += `matcher: <code>${esc(c.matcher)}</code> `;
+      html += `</div>`;
+    });
+    html += `</div>`;
+  } else {
+    html += `<div class="empty-state"><div class="empty-hint">No hooks configured for this event. Add hooks in settings.json under the "hooks" field.</div></div>`;
+  }
+  el.innerHTML = html;
+}
+
+function showSettingsLayer(el, node) {
+  const s = node.data;
+  const scopeColors = {managed:'managed',project:'project',user:'user',local:'local'};
+  const hasData = s.data && Object.keys(s.data).length;
+  const settingsPaths = { user: D.homePath+'/.claude/settings.json', project: D.projectPath+'/.claude/settings.json', local: D.projectPath+'/.claude/settings.local.json' };
+  let html = `<div class="detail-title">⚙️ ${esc(s.label)} Settings</div>`;
+  html += `<div class="detail-subtitle">${typePill('settings file')}</div>`;
+  html += pathBar(settingsPaths[s.scope]);
+  html += renderInheritStrip('settings', s.scope);
+  if (hasData) {
+    html += `<div class="detail-section">`;
+    Object.entries(s.data).filter(([k])=>k!=='$schema').forEach(([k,v]) => {
+      html += jsonValue(k, v);
+    });
+    html += `</div>`;
+  } else {
+    const settingsGuides = {
+      user: { what: 'Control how Claude works everywhere — your default model, enabled plugins, environment variables, and permission preferences.', example: '<code>"model": "opus", "fastMode": true, "enabledPlugins": {...}</code>', create: 'Create or edit this file. Most settings can also be changed with <code>/config</code> in Claude Code.', copy: '~/.claude/settings.json' },
+      project: { what: 'Enforce team-wide guardrails. Project settings control which tools Claude can use, what hooks run, and how it behaves in this repo — for everyone.', example: '<code>"hooks": {"PreToolUse": [...]}, "allowedTools": ["Bash", "Read"]</code>', create: 'Use for hooks, tool restrictions, and team-wide config.', copy: '.claude/settings.json' },
+      local: { what: 'Override any setting just for yourself in this project — without touching the team\'s config. Gitignored, private to you.', example: '<code>"model": "haiku"</code> to use a faster model just for yourself in this project.', create: 'It\'s automatically gitignored and overrides other settings layers.', copy: '.claude/settings.local.json' }
+    };
+    const sg = settingsGuides[s.scope];
+    if (sg) {
+      html += `<div style="display:flex;flex-direction:column;align-items:center;padding:40px 20px;max-width:440px;margin:0 auto">`;
+      html += `<div style="font-size:36px;opacity:0.7;margin-bottom:16px">⚙️</div>`;
+      html += `<div style="color:var(--text);font-size:13px;line-height:1.6;text-align:center;margin-bottom:20px">${sg.what}</div>`;
+      html += `<div style="width:100%;border:1px solid var(--border);border-radius:8px;padding:14px 16px;background:var(--bg-card);margin-bottom:14px">`;
+      html += `<div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:6px;font-weight:600">Example</div>`;
+      html += `<div style="font-size:12px;color:var(--text);line-height:1.6">${sg.example}</div>`;
+      html += `</div>`;
+      html += `<div style="width:100%;border:1px solid var(--border);border-radius:8px;padding:14px 16px;background:var(--bg-card)">`;
+      html += `<div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:6px;font-weight:600">How to create</div>`;
+      html += `<div style="font-size:12px;color:var(--text);line-height:1.6">${sg.create}</div>`;
+      if (sg.copy) html += copyBox(sg.copy);
+      html += `</div>`;
+      html += `</div>`;
+    }
+  }
+  el.innerHTML = html;
+}
+
+function showMarketplace(el, node) {
+  const m = node.data;
+  const cat = D.marketplaceCatalogs?.[m.name] || { plugins:[], skills:[], agents:[] };
+  const tabs = [];
+  if (cat.plugins?.length) tabs.push({ key:'plugins', label:'Plugins', count:cat.plugins.length });
+  if (cat.skills?.length) tabs.push({ key:'skills', label:'Skills', count:cat.skills.length });
+  if (cat.agents?.length) tabs.push({ key:'agents', label:'Agents', count:cat.agents.length });
+  const total = tabs.reduce((a,t)=>a+t.count,0);
+  const installedCount = (cat.plugins||[]).filter(p=>p.installed).length;
+
+  let html = `<div class="detail-title">🏪 ${esc(m.name)}</div>`;
+  html += `<div class="detail-subtitle">${typePill('marketplace')} · ${total} items · ${installedCount} installed</div>`;
+  if (m.source?.repo) {
+    html += `<div style="margin-bottom:16px"><a href="https://github.com/${esc(m.source.repo)}" target="_blank" style="color:var(--accent);font-size:12px;text-decoration:none">↗ github.com/${esc(m.source.repo)}</a></div>`;
+  } else if (m.source?.path) {
+    html += `<div style="margin-bottom:16px">${fpath(m.source.path)}</div>`;
+  }
+
+  if (tabs.length) {
+    // Tab bar
+    const mktId = m.name.replace(/[^a-z0-9]/gi,'');
+    html += `<div style="display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:12px">`;
+    tabs.forEach((t,i) => {
+      html += `<button onclick="document.querySelectorAll('.mkt-tab-${mktId}').forEach(e=>e.style.display='none');document.getElementById('mkt-${mktId}-${t.key}').style.display='';this.parentElement.querySelectorAll('button').forEach(b=>{b.style.borderBottomColor='transparent';b.style.color='var(--text-dim)'});this.style.borderBottomColor='var(--accent)';this.style.color='var(--text)'" style="background:none;border:none;border-bottom:2px solid ${i===0?'var(--accent)':'transparent'};padding:8px 16px;font-size:12px;font-weight:600;color:${i===0?'var(--text)':'var(--text-dim)'};cursor:pointer">${t.label} <span style="font-weight:400;opacity:0.6">${t.count}</span></button>`;
+    });
+    html += `</div>`;
+
+    // Plugins tab
+    if (cat.plugins?.length) {
+      const show = tabs[0].key === 'plugins' ? '' : 'display:none';
+      cat.plugins.sort((a,b) => (b.installed - a.installed) || a.name.localeCompare(b.name));
+      html += `<div id="mkt-${mktId}-plugins" class="mkt-tab-${mktId}" style="${show}">`;
+      cat.plugins.forEach(p => {
+        const bg = p.installed ? 'rgba(74,222,128,0.04)' : 'transparent';
+        html += `<div style="display:flex;align-items:center;gap:10px;padding:7px 12px;background:${bg};border-radius:4px;font-size:12px">`;
+        html += `<span style="font-weight:600;min-width:150px;color:var(--text)">${esc(p.name)}</span>`;
+        if (p.installed) {
+          html += `<span style="font-size:9px;font-weight:700;padding:1px 6px;border-radius:8px;background:rgba(74,222,128,0.15);color:var(--dot-green);border:1px solid rgba(74,222,128,0.3);flex-shrink:0">INSTALLED</span>`;
+          if (p.installedFrom) html += `<span style="font-size:9px;color:var(--text-muted);flex-shrink:0">via ${esc(p.installedFrom)}</span>`;
+        } else {
+          html += `<button onclick="navigator.clipboard.writeText('/install ${p.name}@${m.name}').then(()=>{this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1500)})" style="font-size:9px;padding:1px 6px;border-radius:8px;background:rgba(160,160,160,0.1);color:var(--accent);border:1px solid rgba(160,160,160,0.3);cursor:pointer;flex-shrink:0">Copy</button>`;
+        }
+        html += `<span style="color:var(--text-dim);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.description)}</span>`;
+        html += `</div>`;
+      });
+      html += `</div>`;
+    }
+
+    // Skills tab
+    if (cat.skills?.length) {
+      const show = tabs[0].key === 'skills' ? '' : 'display:none';
+      html += `<div id="mkt-${mktId}-skills" class="mkt-tab-${mktId}" style="${show}">`;
+      cat.skills.forEach(s => {
+        html += `<div style="display:flex;align-items:center;gap:10px;padding:7px 12px;font-size:12px">`;
+        html += `<span style="font-weight:600;min-width:150px;color:var(--text)">/${esc(s.name)}</span>`;
+        html += `<span style="color:var(--text-dim);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.description)}</span>`;
+        html += `</div>`;
+      });
+      html += `</div>`;
+    }
+
+    // Agents tab
+    if (cat.agents?.length) {
+      const show = tabs[0].key === 'agents' ? '' : 'display:none';
+      html += `<div id="mkt-${mktId}-agents" class="mkt-tab-${mktId}" style="${show}">`;
+      cat.agents.forEach(a => {
+        html += `<div style="display:flex;align-items:center;gap:10px;padding:7px 12px;font-size:12px">`;
+        html += `<span style="font-weight:600;min-width:150px;color:var(--text)">${esc(a.name)}</span>`;
+        html += `<span style="color:var(--text-dim);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(a.description)}</span>`;
+        html += `</div>`;
+      });
+      html += `</div>`;
+    }
+  }
+  el.innerHTML = html;
+}
+
+// Header
+function renderHeader() {}
+
+// Footer
+
+// Init
+treeData = buildTree();
+renderHeader();
+renderSidebar();
+// Auto-expand top-level scope nodes (User, Project) but keep children collapsed
+document.querySelectorAll('.tree-children[data-parent^="scope-"]').forEach(el => {
+  el.classList.add('open');
+  const arrow = document.querySelector(`.arrow[data-id="${el.getAttribute('data-parent')}"]`);
+  if (arrow) arrow.classList.add('open');
+});
+document.getElementById('detail').innerHTML = '<div class="empty-state"><div class="empty-icon">👈</div><div class="empty-title">Select an item from the tree</div><div class="empty-hint">Click any item on the left to see its details. Click folders to expand them.</div></div>';
+// Resize handle
+const handle = document.getElementById('resizeHandle');
+const sidebar = document.getElementById('sidebar');
+let dragging = false;
+handle.addEventListener('mousedown', () => { dragging = true; handle.classList.add('dragging'); document.body.style.cursor = 'col-resize'; document.body.style.userSelect = 'none'; });
+document.addEventListener('mousemove', e => { if (dragging) sidebar.style.width = Math.max(150, Math.min(600, e.clientX)) + 'px'; });
+document.addEventListener('mouseup', () => { if (dragging) { dragging = false; handle.classList.remove('dragging'); document.body.style.cursor = ''; document.body.style.userSelect = ''; } });
+</script>
+</body>
+</html>
