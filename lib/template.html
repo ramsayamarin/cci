@@ -446,6 +446,23 @@ function navigateToNode(id) {
 }
 
 // Detail views
+function renderGuide(icon, guide) {
+  let h = `<div style="display:flex;flex-direction:column;align-items:flex-start;padding:40px 20px;max-width:440px;margin:0 auto">`;
+  h += `<div style="font-size:36px;opacity:0.4;margin-bottom:16px">${icon}</div>`;
+  h += `<div style="color:var(--text);font-size:13px;line-height:1.6;text-align:left;margin-bottom:20px">${guide.what}</div>`;
+  h += `<div style="width:100%;border:1px solid var(--border);border-radius:8px;padding:14px 16px;background:var(--bg-card);margin-bottom:14px">`;
+  h += `<div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);margin-bottom:6px;font-weight:600">Example</div>`;
+  h += `<div style="font-size:12px;color:var(--text);line-height:1.6">${guide.example}</div>`;
+  h += `</div>`;
+  h += `<div style="width:100%;border:1px solid var(--border);border-radius:8px;padding:14px 16px;background:var(--bg-card)">`;
+  h += `<div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);margin-bottom:6px;font-weight:600">How to create</div>`;
+  h += `<div style="font-size:12px;color:var(--text);line-height:1.6">${guide.create}</div>`;
+  if (guide.copy) h += copyBox(guide.copy);
+  h += `</div>`;
+  h += `</div>`;
+  return h;
+}
+
 function showDetail(node) {
   const el = document.getElementById('detail');
   if (node.type === 'plugin') return showPlugin(el, node);
@@ -472,18 +489,7 @@ function showFolder(el, node) {
   const childCount = node.children?.length || 0;
   let html = `<div class="detail-title">${node.icon} ${esc(node.label)}</div>`;
   html += `<div class="detail-subtitle">${childCount} items</div>`;
-  if (node.children?.length) {
-    html += `<div class="card-grid">`;
-    node.children.forEach(c => {
-      html += `<div class="card" onclick="navigateToNode('${c.id}')"><div class="card-title">${c.icon} ${esc(c.label)}</div>`;
-      if (c.data?.description) html += `<div class="card-desc">${esc(truncate(c.data.description, 100))}</div>`;
-      if (c.data?.marketplace) html += `<div style="margin-top:4px">${pill(c.data.marketplace, 'plugin')}</div>`;
-      if (c.children?.length) html += `<div class="card-desc">${c.children.length} items inside</div>`;
-      html += `</div>`;
-    });
-    html += `</div>`;
-  } else {
-    const emptyGuides = {
+  const emptyGuides = {
       'user-rules': { what: 'A rule is just a markdown file — the filename doesn\'t matter. The key is the optional <code>paths:</code> frontmatter: with it, the rule only loads when Claude touches matching files (zero context cost otherwise). Without it, it loads every message — identical to a line in CLAUDE.md. Use rules over CLAUDE.md for: path-scoping, or organizing instructions into one-file-per-concern.', example: '<code>---<br>paths:<br>&nbsp;&nbsp;- "*.test.ts"<br>---<br>Always use describe/it blocks.<br>Prefer toBe over toEqual.</code>', create: 'Create a markdown file with a <code>paths:</code> frontmatter field and your instructions.', copy: '~/.claude/rules/testing.md' },
       'proj-rules': { what: 'Same as user rules but committed to the repo — the whole team gets them. Each rule is a markdown file with optional <code>paths:</code> frontmatter. The only reasons to use rules over CLAUDE.md: path-scoping (load only for matching files) and modularity (one file per concern instead of one giant file).', example: '<code>---<br>paths:<br>&nbsp;&nbsp;- "src/api/**"<br>---<br>Validate all input with zod.<br>Return typed error responses.</code>', create: 'Create a markdown file with a <code>paths:</code> frontmatter field and your instructions.', copy: '.claude/rules/api-style.md' },
       'user-hooks': { what: 'The only Claude Code feature with real enforcement — actual shell commands that execute as code, not a prompt Claude might ignore. Defined in settings.json under <code>"hooks"</code>. Each hook fires on an event (PreToolUse, PostToolUse, Stop, etc.) and can optionally match specific tools.', example: '<code>"hooks": {<br>&nbsp;&nbsp;"PreToolUse": [{<br>&nbsp;&nbsp;&nbsp;&nbsp;"matcher": "Write",<br>&nbsp;&nbsp;&nbsp;&nbsp;"command": "eslint --fix $FILE"<br>&nbsp;&nbsp;}]<br>}</code>', create: 'Add a <code>"hooks"</code> section to your settings file.', copy: '~/.claude/settings.json' },
@@ -501,22 +507,7 @@ function showFolder(el, node) {
       'proj-memory': { what: 'Prompt text that Claude writes and reads itself between sessions. <code>MEMORY.md</code> (first 200 lines) is loaded every message — it competes for context with CLAUDE.md and rules. Topic files (e.g. <code>debugging.md</code>) are loaded on-demand when relevant. You can say "remember that..." or Claude saves notes automatically.', example: '<code># MEMORY.md (auto-generated)<br>- Auth module uses JWT with RS256<br>- Tokens expire in 1h<br>- DB migrations in src/db/migrations/<br>- Team prefers zod over joi</code>', create: 'Just tell Claude "remember that..." or it will save memories automatically when it discovers stable patterns.', copy: null }
     };
     const guide = emptyGuides[node.id];
-    if (guide) {
-      html += `<div style="display:flex;flex-direction:column;align-items:center;padding:40px 20px;max-width:440px;margin:0 auto">`;
-      html += `<div style="font-size:36px;opacity:0.4;margin-bottom:16px">${node.icon}</div>`;
-      html += `<div style="color:var(--text);font-size:13px;line-height:1.6;text-align:center;margin-bottom:20px">${guide.what}</div>`;
-      html += `<div style="width:100%;border:1px solid var(--border);border-radius:8px;padding:14px 16px;background:var(--bg-card);margin-bottom:14px">`;
-      html += `<div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);margin-bottom:6px;font-weight:600">Example</div>`;
-      html += `<div style="font-size:12px;color:var(--text);line-height:1.6">${guide.example}</div>`;
-      html += `</div>`;
-      html += `<div style="width:100%;border:1px solid var(--border);border-radius:8px;padding:14px 16px;background:var(--bg-card)">`;
-      html += `<div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);margin-bottom:6px;font-weight:600">How to create</div>`;
-      html += `<div style="font-size:12px;color:var(--text);line-height:1.6">${guide.create}</div>`;
-      if (guide.copy) html += copyBox(guide.copy);
-      html += `</div>`;
-      html += `</div>`;
-    }
-  }
+    if (guide) html += renderGuide(node.icon, guide);
   el.innerHTML = html;
 }
 
@@ -664,21 +655,7 @@ function showClaudeMd(el, node) {
       local: { what: 'Personal prompt text for this project only — gitignored so the team never sees it. Loaded every message, same mechanism as CLAUDE.md. Use this for personal preferences that only apply to this repo.', example: '<code># My local notes<br>- I\'m working on the auth module<br>- Always run tests after changes<br>- Use verbose commit messages</code>', create: 'Create this file in your project root. It\'s automatically gitignored.', copy: 'CLAUDE.local.md' }
     };
     const cg = claudeGuides[m.scope];
-    if (cg) {
-      html += `<div style="display:flex;flex-direction:column;align-items:center;padding:40px 20px;max-width:440px;margin:0 auto">`;
-      html += `<div style="font-size:36px;opacity:0.7;margin-bottom:16px">📄</div>`;
-      html += `<div style="color:var(--text);font-size:13px;line-height:1.6;text-align:center;margin-bottom:20px">${cg.what}</div>`;
-      html += `<div style="width:100%;border:1px solid var(--border);border-radius:8px;padding:14px 16px;background:var(--bg-card);margin-bottom:14px">`;
-      html += `<div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:6px;font-weight:600">Example content</div>`;
-      html += `<div style="font-size:12px;color:var(--text);line-height:1.6;font-style:italic">${cg.example}</div>`;
-      html += `</div>`;
-      html += `<div style="width:100%;border:1px solid var(--border);border-radius:8px;padding:14px 16px;background:var(--bg-card)">`;
-      html += `<div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:6px;font-weight:600">How to create</div>`;
-      html += `<div style="font-size:12px;color:var(--text);line-height:1.6">${cg.create}</div>`;
-      if (cg.copy) html += copyBox(cg.copy);
-      html += `</div>`;
-      html += `</div>`;
-    } else {
+    if (cg) html += renderGuide('📄', cg); else {
       html += `<div class="empty-state"><div class="empty-icon">📄</div><div class="empty-title">Not configured</div><div class="empty-hint">Create this file at ${fpath(paths[m.scope]||'')}</div></div>`;
     }
   }
@@ -768,21 +745,7 @@ function showSettingsLayer(el, node) {
       local: { what: 'Override any setting just for yourself in this project — without touching the team\'s config. Gitignored, private to you.', example: '<code>"model": "haiku"</code> to use a faster model just for yourself in this project.', create: 'It\'s automatically gitignored and overrides other settings layers.', copy: '.claude/settings.local.json' }
     };
     const sg = settingsGuides[s.scope];
-    if (sg) {
-      html += `<div style="display:flex;flex-direction:column;align-items:center;padding:40px 20px;max-width:440px;margin:0 auto">`;
-      html += `<div style="font-size:36px;opacity:0.7;margin-bottom:16px">⚙️</div>`;
-      html += `<div style="color:var(--text);font-size:13px;line-height:1.6;text-align:center;margin-bottom:20px">${sg.what}</div>`;
-      html += `<div style="width:100%;border:1px solid var(--border);border-radius:8px;padding:14px 16px;background:var(--bg-card);margin-bottom:14px">`;
-      html += `<div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:6px;font-weight:600">Example</div>`;
-      html += `<div style="font-size:12px;color:var(--text);line-height:1.6">${sg.example}</div>`;
-      html += `</div>`;
-      html += `<div style="width:100%;border:1px solid var(--border);border-radius:8px;padding:14px 16px;background:var(--bg-card)">`;
-      html += `<div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:6px;font-weight:600">How to create</div>`;
-      html += `<div style="font-size:12px;color:var(--text);line-height:1.6">${sg.create}</div>`;
-      if (sg.copy) html += copyBox(sg.copy);
-      html += `</div>`;
-      html += `</div>`;
-    }
+    if (sg) html += renderGuide('⚙️', sg);
   }
   el.innerHTML = html;
 }
