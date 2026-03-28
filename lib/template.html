@@ -279,6 +279,11 @@ function buildTree() {
   userSkills.forEach(s => { uSkills.children.push({ id:'skill:'+s.name, icon:'⚡', label: '/'+s.name, type:'skill', data: {...s, source:'personal'} }); });
   userNode.children.push(uSkills);
 
+  const userCommands = D.userCommands || [];
+  const uCommands = { id:'user-commands', icon:'💬', label:'Commands', count: userCommands.length, children: [] };
+  userCommands.forEach(c => { uCommands.children.push({ id:'command:'+c.name, icon:'💬', label: '/'+c.name, type:'command', data: {...c, source:'personal'} }); });
+  userNode.children.push(uCommands);
+
   const uMcp = { id:'user-mcp', icon:'🔗', label:'MCP Servers', count: Object.keys(allMcp).length, children: [] };
   Object.entries(allMcp).forEach(([name, info]) => { uMcp.children.push({ id:'mcp:'+name, icon:'🔗', label: name, type:'mcp', data: { name, ...info } }); });
   userNode.children.push(uMcp);
@@ -334,6 +339,10 @@ function buildTree() {
   const pSkills = { id:'proj-skills', icon:'⚡', label:'Skills', count: (D.projectSkills||[]).length, children: [] };
   (D.projectSkills||[]).forEach(s => { pSkills.children.push({ id:'skill:p:'+s.name, icon:'⚡', label: '/'+s.name, type:'skill', data: {...s, source:'project'} }); });
   projNode.children.push(pSkills);
+
+  const pCommands = { id:'proj-commands', icon:'💬', label:'Commands', count: (D.projectCommands||[]).length, children: [] };
+  (D.projectCommands||[]).forEach(c => { pCommands.children.push({ id:'command:p:'+c.name, icon:'💬', label: '/'+c.name, type:'command', data: {...c, source:'project'} }); });
+  projNode.children.push(pCommands);
 
   const pMcp = { id:'proj-mcp', icon:'🔗', label:'MCP Servers', count: Object.keys(D.projectMcp?.mcpServers||{}).length, children: [] };
   Object.entries(D.projectMcp?.mcpServers||{}).forEach(([name, cfg]) => { pMcp.children.push({ id:'mcp:p:'+name, icon:'🔗', label: name, type:'mcp', data: { name, config: cfg, tools: [] } }); });
@@ -480,6 +489,10 @@ function renderInheritStrip(category, currentScope) {
     agents: { mode: 'additive', scopes: [
       { key: 'user', label: 'User', nodeId: 'user-agents', configured: (D.userAgents||[]).length > 0 },
       { key: 'project', label: 'Project', nodeId: 'proj-agents', configured: (D.projectAgents||[]).length > 0 }
+    ]},
+    commands: { mode: 'additive', scopes: [
+      { key: 'user', label: 'User', nodeId: 'user-commands', configured: (D.userCommands||[]).length > 0 },
+      { key: 'project', label: 'Project', nodeId: 'proj-commands', configured: (D.projectCommands||[]).length > 0 }
     ]}
   };
   const chain = chains[category];
@@ -509,6 +522,7 @@ function showDetail(node) {
   if (node.type === 'plugin') return showPlugin(el, node);
   if (node.type === 'skill') return showSkill(el, node);
   if (node.type === 'plugin-command') return showPluginCommand(el, node);
+  if (node.type === 'command') return showCommand(el, node);
   if (node.type === 'plugin-agent') return showPluginAgent(el, node);
   if (node.type === 'plugin-hook') return showPluginHook(el, node);
   if (node.type === 'mcp') return showMcp(el, node);
@@ -531,6 +545,7 @@ function showFolder(el, node) {
     'user-hooks':['hooks','user'], 'proj-hooks':['hooks','project'],
     'user-rules':['rules','user'], 'proj-rules':['rules','project'],
     'user-skills':['skills','user'], 'proj-skills':['skills','project'],
+    'user-commands':['commands','user'], 'proj-commands':['commands','project'],
     'user-mcp':['mcp','user'], 'proj-mcp':['mcp','project'],
     'user-plugins':['plugins','user'], 'proj-plugins':['plugins','project'],
     'user-agents':['agents','user'], 'proj-agents':['agents','project']
@@ -561,6 +576,8 @@ function showFolder(el, node) {
       'proj-mcp': { what: 'Give your whole team the same external tool access. Project MCP servers are committed to the repo so everyone gets the same capabilities.', example: 'An Azure DevOps MCP server lets Claude create PRs and query work items.', create: 'Create a JSON file with a <code>"mcpServers"</code> field in your project root.', copy: '.mcp.json' },
       'user-agents': { what: 'Need Claude to behave differently for different tasks? Agents are specialized personas with their own instructions, model, and tool access.', example: 'A "reviewer" agent could use haiku for fast code review with read-only tools.', create: 'Create a markdown file with YAML frontmatter (name, model, tools) and a system prompt.', copy: '~/.claude/agents/my-agent.md' },
       'proj-agents': { what: 'Share specialized Claude personas with your team. Project agents let everyone use the same "tester" or "reviewer" persona from the repo.', example: 'A "tester" agent could focus on writing tests with access only to Read, Write, and Bash.', create: 'Create a markdown file with YAML frontmatter and a system prompt.', copy: '.claude/agents/my-agent.md' },
+      'user-commands': { what: 'Commands are lightweight slash commands — just a markdown file with a prompt template. Simpler than skills, perfect for quick reusable prompts.', example: 'A <code>/diff-review</code> command could contain a prompt template for reviewing git diffs with specific criteria.', create: 'Create a markdown file with optional YAML frontmatter (name, description, argument-hint).', copy: '~/.claude/commands/my-command.md' },
+      'proj-commands': { what: 'Share quick prompt templates with your team. Project commands live in the repo so everyone gets the same slash commands.', example: 'A <code>/deploy-checklist</code> command could guide Claude through your team\'s deployment verification steps.', create: 'Create a markdown file with optional YAML frontmatter (name, description, argument-hint).', copy: '.claude/commands/my-command.md' },
       'user-plugins': { what: 'Get new skills and tools instantly. Plugins are community packages that extend Claude Code — install once and they\'re available everywhere.', example: 'The <code>superpowers</code> plugin adds skills for brainstorming, debugging, and TDD workflows.', create: 'Run this command in Claude Code to browse and install from marketplaces.', copy: '/plugins' },
       'proj-plugins': { what: 'Need a plugin only for this repo? Project-scoped plugins activate just for this project, keeping your global setup clean.', example: 'A <code>pr-review-toolkit</code> plugin could add PR review skills just for this repo.', create: 'Run <code>/plugins</code> and choose "project" scope when installing.', copy: '/plugins' },
       'proj-memory': { what: 'Claude forgets everything between sessions. Auto memory fixes that — Claude saves notes about your codebase so it doesn\'t start from scratch each time.', example: 'Claude might save <code>debugging.md</code> noting "the auth module uses JWT with RS256, tokens expire in 1h."', create: 'Just tell Claude "remember that..." or it will save memories automatically when it discovers stable patterns.', copy: null }
@@ -633,6 +650,21 @@ function showPluginCommand(el, node) {
   html += `<div class="detail-subtitle">${typePill('command')} from plugin "${esc(c.pluginName)}"</div>`;
   html += `<div class="detail-section">`;
   if (c.description) html += `<div class="info-row"><span class="info-label">Description</span><span class="info-value">${esc(c.description)}</span></div>`;
+  if (c.argumentHint) html += `<div class="info-row"><span class="info-label">Arguments</span><span class="info-value"><code>${esc(c.argumentHint)}</code></span></div>`;
+  html += `</div>`;
+  el.innerHTML = html;
+}
+
+function showCommand(el, node) {
+  const c = node.data;
+  const cmdSource = c.source === 'project' ? '· project' : '· personal';
+  let html = `<div class="detail-title">💬 /${esc(c.name)}</div>`;
+  html += `<div class="detail-subtitle">${typePill('command')} ${cmdSource}</div>`;
+  html += pathBar(c.path);
+  html += `<div class="detail-section">`;
+  if (c.description) html += `<div class="info-row"><span class="info-label">Description</span><span class="info-value">${esc(c.description)}</span></div>`;
+  if (c.originSkill) html += `<div class="info-row"><span class="info-label">Origin</span><span class="info-value">${pill('installed by skill: ' + c.originSkill, 'plugin')}</span></div>`;
+  if (c.lines) html += `<div class="info-row"><span class="info-label">Size</span><span class="info-value">${c.lines} lines</span></div>`;
   if (c.argumentHint) html += `<div class="info-row"><span class="info-label">Arguments</span><span class="info-value"><code>${esc(c.argumentHint)}</code></span></div>`;
   html += `</div>`;
   el.innerHTML = html;
