@@ -184,7 +184,7 @@ const esc = s => { if(!s) return ''; const d=document.createElement('div'); d.te
 const pill = (text, cls='dim') => `<span class="pill pill-${cls}">${esc(text)}</span>`;
 const dot = (s) => `<span class="dot dot-${s}"></span>`;
 const fpath = (p) => p ? `<span class="fpath">${esc(p)}</span>` : '';
-const pathBar = (p) => p ? `<div class="detail-path">📂 ${esc(p)}</div>` : '';
+const pathBar = (p) => p ? `<div class="detail-path">📂 ${esc(p.replace(/\\/g, '/'))}</div>` : '';
 const typeDescs = {
   skill: 'A reusable prompt template invoked with a slash command (e.g. /deploy)',
   command: 'A slash command bundled inside a plugin — similar to a skill but plugin-managed',
@@ -816,7 +816,7 @@ function showMcp(el, node) {
   const m = node.data;
   const cfg = m.config || {};
   const transport = cfg.type || (cfg.command ? 'stdio' : '?');
-  const mcpFile = node.id.startsWith('mcp:p:') ? D.projectPath+'/.mcp.json' : D.homePath+'/.claude.json';
+  const mcpFile = node.id.startsWith('mcp:p:') ? D.projectMcpPath : D.userMcpPath;
   let html = `<div class="detail-title">🔌 ${esc(m.name)}</div>`;
   html += `<div class="detail-subtitle">${typePill('mcp server')} · ${pill(transport,'dim')} transport · ${m.tools.length} tools</div>`;
   html += pathBar(mcpFile);
@@ -916,7 +916,7 @@ function showHook(el, node) {
       (Array.isArray(handlers)?handlers:[handlers]).forEach(hh => configured.push({...hh, scope:label}));
     }
   }
-  const hookFile = configured.length ? (configured[0].scope === 'user' ? D.homePath+'/.claude/settings.json' : D.projectPath+'/.claude/settings.json') : null;
+  const hookFile = configured.length ? (configured[0].scope === 'user' ? D.userSettingsPath : D.projectSettingsPath) : null;
   let html = `<div class="detail-title">${h.icon||'🔗'} ${esc(h.name)}</div>`;
   html += `<div class="detail-subtitle">${typePill('hook')} · ${esc(h.description)}</div>`;
   html += pathBar(hookFile);
@@ -939,7 +939,7 @@ function showSettingsLayer(el, node) {
   const s = node.data;
   const scopeColors = {managed:'managed',project:'project',user:'user',local:'local'};
   const hasData = s.data && Object.keys(s.data).length;
-  const settingsPaths = { user: D.homePath+'/.claude/settings.json', project: D.projectPath+'/.claude/settings.json', local: D.projectPath+'/.claude/settings.local.json' };
+  const settingsPaths = { user: D.userSettingsPath, project: D.projectSettingsPath, local: D.localSettingsPath };
   let html = `<div class="detail-title">⚙️ ${esc(s.label)} Settings</div>`;
   html += `<div class="detail-subtitle">${typePill('settings file')}</div>`;
   html += pathBar(settingsPaths[s.scope]);
