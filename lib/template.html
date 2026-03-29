@@ -153,13 +153,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sa
 .origin-project { background: rgba(74,222,128,0.08); border: 1px solid rgba(74,222,128,0.2); color: var(--scope-project); }
 
 /* Inheritance strip */
-.inherit-strip { display: flex; align-items: center; gap: 6px; padding: 8px 12px; margin-bottom: 16px; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 8px; font-size: 12px; flex-wrap: wrap; }
-.inherit-strip .inherit-mode { color: var(--text-muted); font-size: 14px; flex-shrink: 0; }
-.inherit-pill { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; border: 1px solid var(--border); background: rgba(255,255,255,0.03); color: var(--text-dim); transition: all 0.15s; }
-.inherit-pill.clickable { cursor: pointer; }
-.inherit-pill.clickable:hover { border-color: var(--border-light); background: rgba(255,255,255,0.06); color: var(--text); }
-.inherit-pill.current { border-color: var(--accent); background: rgba(160,160,160,0.15); color: #fff; }
-.inherit-arrow { color: var(--text-muted); font-size: 11px; flex-shrink: 0; }
 
 </style>
 </head>
@@ -499,64 +492,6 @@ function navigateToNode(id) {
   if (node) showDetail(node);
 }
 
-function renderInheritStrip(category, currentScope) {
-  const chains = {
-    claudemd: { mode: 'cascade', scopes: [
-      { key: 'user', label: 'User', nodeId: 'claudemd:user', configured: !!D.userClaudeMd?.exists },
-      { key: 'project', label: 'Project', nodeId: 'claudemd:project', configured: !!D.projectClaudeMd?.exists },
-      { key: 'local', label: 'Local (.gitignore)', nodeId: 'claudemd:local', configured: !!D.localClaudeMd?.exists }
-    ]},
-    settings: { mode: 'cascade', scopes: [
-      { key: 'user', label: 'User', nodeId: 'settings:user', configured: !!(D.userSettings && Object.keys(D.userSettings).filter(k=>k!=='$schema').length) },
-      { key: 'project', label: 'Project', nodeId: 'settings:project', configured: !!(D.projectSettings && Object.keys(D.projectSettings).filter(k=>k!=='$schema').length) },
-      { key: 'local', label: 'Local (.gitignore)', nodeId: 'settings:local', configured: !!(D.localSettings && Object.keys(D.localSettings).filter(k=>k!=='$schema').length) }
-    ]},
-    hooks: { mode: 'additive', scopes: [
-      { key: 'user', label: 'User', nodeId: 'user-hooks', configured: !!(D.userSettings?.hooks && Object.keys(D.userSettings.hooks).length) },
-      { key: 'project', label: 'Project', nodeId: 'proj-hooks', configured: !!(D.projectSettings?.hooks && Object.keys(D.projectSettings.hooks).length) }
-    ]},
-    rules: { mode: 'additive', scopes: [
-      { key: 'user', label: 'User', nodeId: 'user-rules', configured: (D.userRules||[]).length > 0 },
-      { key: 'project', label: 'Project', nodeId: 'proj-rules', configured: (D.projectRules||[]).length > 0 }
-    ]},
-    skills: { mode: 'additive', scopes: [
-      { key: 'user', label: 'User', nodeId: 'user-skills', configured: (D.userSkills||[]).length > 0 },
-      { key: 'project', label: 'Project', nodeId: 'proj-skills', configured: (D.projectSkills||[]).length > 0 }
-    ]},
-    mcp: { mode: 'additive', scopes: [
-      { key: 'user', label: 'User', nodeId: 'user-mcp', configured: Object.keys(D.mcpServers||{}).length > 0 || (D.activeMcpTools||[]).length > 0 },
-      { key: 'project', label: 'Project', nodeId: 'proj-mcp', configured: Object.keys(D.projectMcp?.mcpServers||{}).length > 0 }
-    ]},
-    plugins: { mode: 'additive', scopes: [
-      { key: 'user', label: 'User', nodeId: 'user-plugins', configured: (D.installedPlugins||[]).filter(p=>p.scope!=='project').length > 0 },
-      { key: 'project', label: 'Project', nodeId: 'proj-plugins', configured: (D.installedPlugins||[]).filter(p=>p.scope==='project').length > 0 }
-    ]},
-    agents: { mode: 'additive', scopes: [
-      { key: 'user', label: 'User', nodeId: 'user-agents', configured: (D.userAgents||[]).length > 0 },
-      { key: 'project', label: 'Project', nodeId: 'proj-agents', configured: (D.projectAgents||[]).length > 0 }
-    ]}
-  };
-  const chain = chains[category];
-  if (!chain) return '';
-  if (chain.scopes.length <= 1) return '';
-  const isCascade = chain.mode === 'cascade';
-  const modeIcon = isCascade ? '↕' : '+';
-  const sep = isCascade ? '→' : '+';
-  let html = '<div class="inherit-strip">';
-  // mode icon removed — arrows/plus between pills already communicate the relationship
-  chain.scopes.forEach((scope, i) => {
-    if (i > 0) html += `<span class="inherit-arrow">${sep}</span>`;
-    const isCurrent = scope.key === currentScope;
-    const cls = ['inherit-pill', 'scope-' + scope.key];
-    if (isCurrent) cls.push('current');
-    if (!isCurrent) cls.push('clickable');
-    const onclick = isCurrent ? '' : ` onclick="navigateToNode('${scope.nodeId}')"`;
-    html += `<span class="${cls.join(' ')}"${onclick}>${scope.label}</span>`;
-  });
-  html += '</div>';
-  return html;
-}
-
 // Detail views
 function showDetail(node) {
   const el = document.getElementById('detail');
@@ -632,18 +567,8 @@ function showDirectory(el, node) {
 
 function showFolder(el, node) {
   const childCount = node.children?.length || 0;
-  const folderInherit = {
-    'user-hooks':['hooks','user'], 'proj-hooks':['hooks','project'],
-    'user-rules':['rules','user'], 'proj-rules':['rules','project'],
-    'user-skills':['skills','user'], 'proj-skills':['skills','project'],
-    'user-mcp':['mcp','user'], 'proj-mcp':['mcp','project'],
-    'user-plugins':['plugins','user'], 'proj-plugins':['plugins','project'],
-    'user-agents':['agents','user'], 'proj-agents':['agents','project']
-  };
   let html = `<div class="detail-title">${node.icon} ${esc(node.label)}</div>`;
   html += `<div class="detail-subtitle">${childCount} items</div>`;
-  const fi = folderInherit[node.id];
-  if (fi) html += renderInheritStrip(fi[0], fi[1]);
   if (node.children?.length) {
     html += `<div class="card-grid">`;
     node.children.forEach(c => {
@@ -837,7 +762,6 @@ function showClaudeMd(el, node) {
   let html = `<div class="detail-title">📄 ${esc(m.label)}</div>`;
   html += `<div class="detail-subtitle">${typePill('claude.md')}</div>`;
   html += pathBar(m.data?.path);
-  html += renderInheritStrip('claudemd', m.scope);
   if (exists && m.data?.content) {
     html += `<div class="detail-section"><div class="detail-section-title">Content</div><div class="preview">${esc(m.data.content)}</div></div>`;
   }
@@ -943,7 +867,6 @@ function showSettingsLayer(el, node) {
   let html = `<div class="detail-title">⚙️ ${esc(s.label)} Settings</div>`;
   html += `<div class="detail-subtitle">${typePill('settings file')}</div>`;
   html += pathBar(settingsPaths[s.scope]);
-  html += renderInheritStrip('settings', s.scope);
   if (hasData) {
     html += `<div class="detail-section">`;
     Object.entries(s.data).filter(([k])=>k!=='$schema').forEach(([k,v]) => {
