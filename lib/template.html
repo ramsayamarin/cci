@@ -566,9 +566,7 @@ function showDirectory(el, node) {
 }
 
 function showFolder(el, node) {
-  const childCount = node.children?.length || 0;
   let html = `<div class="detail-title">${node.icon} ${esc(node.label)}</div>`;
-  html += `<div class="detail-subtitle">${childCount} items</div>`;
   {
     const emptyGuides = {
       'user-rules': { what: 'Tired of repeating the same instructions? Rules let you say it once and have Claude follow it every time it touches matching files.', example: 'A rule for <code>*.test.ts</code> could say "always use describe/it blocks and prefer toBe over toEqual."', create: 'Create a markdown file with a <code>paths:</code> frontmatter field and your instructions.', copy: '~/.claude/rules/testing.md' },
