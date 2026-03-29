@@ -569,17 +569,7 @@ function showFolder(el, node) {
   const childCount = node.children?.length || 0;
   let html = `<div class="detail-title">${node.icon} ${esc(node.label)}</div>`;
   html += `<div class="detail-subtitle">${childCount} items</div>`;
-  if (node.children?.length) {
-    html += `<div class="card-grid">`;
-    node.children.forEach(c => {
-      html += `<div class="card" onclick="navigateToNode('${c.id}')"><div class="card-title">${c.icon} ${esc(c.label)}</div>`;
-      if (c.data?.description) html += `<div class="card-desc">${esc(truncate(c.data.description, 100))}</div>`;
-      if (c.data?.marketplace) html += `<div style="margin-top:4px">${pill(c.data.marketplace, 'plugin')}</div>`;
-      if (c.children?.length) html += `<div class="card-desc">${c.children.length} items inside</div>`;
-      html += `</div>`;
-    });
-    html += `</div>`;
-  } else {
+  {
     const emptyGuides = {
       'user-rules': { what: 'Tired of repeating the same instructions? Rules let you say it once and have Claude follow it every time it touches matching files.', example: 'A rule for <code>*.test.ts</code> could say "always use describe/it blocks and prefer toBe over toEqual."', create: 'Create a markdown file with a <code>paths:</code> frontmatter field and your instructions.', copy: '~/.claude/rules/testing.md' },
       'proj-rules': { what: 'Keep your team consistent. Rules automatically apply instructions whenever Claude works on files matching a pattern — no one has to remember to ask.', example: 'A rule for <code>src/api/**</code> could say "always validate input with zod and return typed errors."', create: 'Create a markdown file with a <code>paths:</code> frontmatter field and your instructions.', copy: '.claude/rules/api-style.md' },
