@@ -348,6 +348,29 @@ describe('buildTree plugins', () => {
     const plugin = findNode('plugin:test-plugin', tree);
     assert.equal(plugin.dimmed, false);
   });
+
+  it('matches plugin children by name AND marketplace, not name alone', () => {
+    const D = emptyData();
+    D.installedPlugins = [
+      { name: 'dupe', scope: 'user', enabled: true, marketplace: 'mkt-a' },
+      { name: 'dupe', scope: 'user', enabled: true, marketplace: 'mkt-b' }
+    ];
+    D.pluginSkills = [
+      { name: 'skill-a', pluginName: 'dupe', marketplace: 'mkt-a', files: [] },
+      { name: 'skill-b', pluginName: 'dupe', marketplace: 'mkt-b', files: [] }
+    ];
+    const tree = buildTree(D);
+    const pluginA = findNode('plugin:mkt-a:dupe', tree);
+    const pluginB = findNode('plugin:mkt-b:dupe', tree);
+    // Plugin A should only have skill-a
+    const labelsA = pluginA.children.map(c => c.label);
+    assert.ok(labelsA.includes('/skill-a'), 'plugin A should have skill-a');
+    assert.ok(!labelsA.includes('/skill-b'), 'plugin A should NOT have skill-b');
+    // Plugin B should only have skill-b
+    const labelsB = pluginB.children.map(c => c.label);
+    assert.ok(labelsB.includes('/skill-b'), 'plugin B should have skill-b');
+    assert.ok(!labelsB.includes('/skill-a'), 'plugin B should NOT have skill-a');
+  });
 });
 
 // --- buildTree: consistent icons ---

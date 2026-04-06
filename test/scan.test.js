@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { scan, parseFrontmatter, scanCommands } = require('../lib/scan');
+const { scan, parseFrontmatter, scanCommands, scanDirTree } = require('../lib/scan');
 
 // Helper: create a temp directory tree for testing
 function makeTempDir() {
@@ -101,6 +101,40 @@ describe('scanCommands', () => {
     const cmds = scanCommands(tmp);
     assert.equal(cmds.length, 1);
     assert.equal(cmds[0].name, 'real');
+  });
+});
+
+// --- scanDirTree ---
+
+describe('scanDirTree', () => {
+  let tmp;
+
+  beforeEach(() => { tmp = makeTempDir(); });
+  afterEach(() => { rmrf(tmp); });
+
+  it('includes dot-directories not in SKIP_DIRS', () => {
+    fs.mkdirSync(path.join(tmp, '.codex-plugin'));
+    writeFile(tmp, '.codex-plugin/config.json', '{}');
+    const tree = scanDirTree(tmp);
+    const dotDir = tree.find(n => n.name === '.codex-plugin');
+    assert.ok(dotDir, '.codex-plugin should be included');
+    assert.equal(dotDir.type, 'directory');
+  });
+
+  it('still skips dot-directories in SKIP_DIRS', () => {
+    fs.mkdirSync(path.join(tmp, '.git'));
+    writeFile(tmp, '.git/HEAD', 'ref: refs/heads/main');
+    const tree = scanDirTree(tmp);
+    const gitDir = tree.find(n => n.name === '.git');
+    assert.equal(gitDir, undefined, '.git should be skipped');
+  });
+
+  it('skips node_modules', () => {
+    fs.mkdirSync(path.join(tmp, 'node_modules'));
+    writeFile(tmp, 'node_modules/pkg.js', '');
+    const tree = scanDirTree(tmp);
+    const nm = tree.find(n => n.name === 'node_modules');
+    assert.equal(nm, undefined, 'node_modules should be skipped');
   });
 });
 
