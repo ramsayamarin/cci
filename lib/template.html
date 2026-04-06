@@ -555,7 +555,7 @@ function showFile(el, node) {
   const f = node.data;
   const icon = fileIcon(f.name, false);
   let html = `<div class="detail-title">${icon} ${esc(f.name)}</div>`;
-  html += `<div class="detail-subtitle">${typePill('file')}${f.size ? ' · ' + formatSize(f.size) : ''}</div>`;
+  html += `<div class="detail-subtitle">${f.size ? formatSize(f.size) : ''}</div>`;
   html += pathBar(f.path);
   if (f.binary) {
     html += `<div class="empty-state"><div class="empty-icon">🖼️</div><div class="empty-title">Binary file</div><div class="empty-hint">${formatSize(f.size)}</div></div>`;
@@ -579,24 +579,9 @@ function showDirectory(el, node) {
   const items = f.children || [];
   const dirs = items.filter(i => i.type === 'directory');
   const files = items.filter(i => i.type === 'file');
-  let html = `<div class="detail-title">📁 ${esc(f.name)}</div>`;
-  html += `<div class="detail-subtitle">${typePill('directory')} · ${dirs.length} folders, ${files.length} files</div>`;
+  let html = `<div class="detail-title">${ICONS.project} ${esc(f.name)}</div>`;
+  html += `<div class="detail-subtitle">${dirs.length} folders, ${files.length} files</div>`;
   html += pathBar(f.path);
-  if (node.children && node.children.length) {
-    html += `<div class="card-grid">`;
-    node.children.forEach(c => {
-      const cIcon = fileIcon(c.data?.name || c.label, c.type === 'directory');
-      const sizeStr = c.data?.size ? formatSize(c.data.size) : '';
-      const childCount = c.type === 'directory' && c.children ? c.children.length + ' items' : '';
-      html += `<div class="card" onclick="navigateToNode('${c.id}')"><div class="card-title">${cIcon} ${esc(c.label)}</div>`;
-      if (sizeStr) html += `<div class="card-desc">${sizeStr}</div>`;
-      if (childCount) html += `<div class="card-desc">${childCount}</div>`;
-      html += `</div>`;
-    });
-    html += `</div>`;
-  } else {
-    html += `<div class="empty-state"><div class="empty-icon">📁</div><div class="empty-title">Empty directory</div></div>`;
-  }
   el.innerHTML = html;
 }
 
@@ -647,8 +632,8 @@ function showPlugin(el, node) {
   const cmds = all.filter(c => c.type === 'plugin-command');
   const agents = all.filter(c => c.type === 'plugin-agent');
   const hooks = all.filter(c => c.type === 'plugin-hook');
-  let html = `<div class="detail-title">📦 ${esc(p.name)}</div>`;
-  html += `<div class="detail-subtitle">${typePill('plugin')} from ${pill(p.marketplace || '', 'plugin')}</div>`;
+  let html = `<div class="detail-title">${ICONS.plugin} ${esc(p.name)}</div>`;
+  html += `<div class="detail-subtitle">from ${pill(p.marketplace || '', 'plugin')}</div>`;
   html += pathBar(p.installPath);
   html += `<div class="detail-section">`;
   if (p.enabled === false) html += `<div class="info-row"><span class="info-label">Status</span><span class="info-value">${dot('red')} disabled</span></div>`;
@@ -663,44 +648,13 @@ function showPlugin(el, node) {
   if (hooks.length) parts.push(hooks.length + ' hooks');
   if (parts.length) html += `<div class="info-row"><span class="info-label">Contains</span><span class="info-value">${parts.join(', ')}</span></div>`;
   html += `</div>`;
-  const sections = [
-    { items: skills, title: 'Skills', icon: '⚡' },
-    { items: cmds, title: 'Commands', icon: '💬' },
-    { items: agents, title: 'Agents', icon: '🤖' },
-    { items: hooks, title: 'Hooks', icon: '🪝' }
-  ];
-  sections.forEach(sec => {
-    if (!sec.items.length) return;
-    html += `<div class="detail-section"><div class="detail-section-title">${sec.title}</div><div class="card-grid">`;
-    sec.items.forEach(c => {
-      html += `<div class="card" onclick="navigateToNode('${c.id}')"><div class="card-title">${sec.icon} ${esc(c.label)}</div>`;
-      if (c.data?.description) html += `<div class="card-desc">${esc(truncate(c.data.description, 100))}</div>`;
-      html += `</div>`;
-    });
-    html += `</div></div>`;
-  });
-  // All Files section from plugin filesystem
-  const allFilesChild = all.find(c => c.type === 'directory' && c.data?.name === 'All Files');
-  if (allFilesChild && allFilesChild.children && allFilesChild.children.length) {
-    html += `<div class="detail-section"><div class="detail-section-title">All Files</div><div class="card-grid">`;
-    allFilesChild.children.forEach(c => {
-      const cIcon = fileIcon(c.data?.name || c.label, c.type === 'directory');
-      const sizeStr = c.data?.size ? formatSize(c.data.size) : '';
-      const childCount = c.type === 'directory' && c.children ? c.children.length + ' items' : '';
-      html += `<div class="card" onclick="navigateToNode('${c.id}')"><div class="card-title">${cIcon} ${esc(c.label)}</div>`;
-      if (sizeStr) html += `<div class="card-desc">${sizeStr}</div>`;
-      if (childCount) html += `<div class="card-desc">${childCount}</div>`;
-      html += `</div>`;
-    });
-    html += `</div></div>`;
-  }
   el.innerHTML = html;
 }
 
 function showPluginCommand(el, node) {
   const c = node.data;
-  let html = `<div class="detail-title">💬 /${esc(c.name)}</div>`;
-  html += `<div class="detail-subtitle">${typePill('command')} from plugin "${esc(c.pluginName)}"</div>`;
+  let html = `<div class="detail-title">${ICONS.command} /${esc(c.name)}</div>`;
+  html += `<div class="detail-subtitle">from plugin "${esc(c.pluginName)}"</div>`;
   html += `<div class="detail-section">`;
   if (c.description) html += `<div class="info-row"><span class="info-label">Description</span><span class="info-value">${esc(c.description)}</span></div>`;
   if (c.argumentHint) html += `<div class="info-row"><span class="info-label">Arguments</span><span class="info-value"><code>${esc(c.argumentHint)}</code></span></div>`;
@@ -711,8 +665,8 @@ function showPluginCommand(el, node) {
 function showCommand(el, node) {
   const c = node.data;
   const cmdSource = c.source === 'project' ? '· project' : '· personal';
-  let html = `<div class="detail-title">💬 /${esc(c.name)}</div>`;
-  html += `<div class="detail-subtitle">${typePill('command')} ${cmdSource}</div>`;
+  let html = `<div class="detail-title">${ICONS.command} /${esc(c.name)}</div>`;
+  html += `<div class="detail-subtitle">${cmdSource}</div>`;
   html += pathBar(c.path);
   html += `<div class="detail-section">`;
   if (c.description) html += `<div class="info-row"><span class="info-label">Description</span><span class="info-value">${esc(c.description)}</span></div>`;
@@ -725,8 +679,8 @@ function showCommand(el, node) {
 
 function showPluginAgent(el, node) {
   const a = node.data;
-  let html = `<div class="detail-title">🤖 ${esc(a.name)}</div>`;
-  html += `<div class="detail-subtitle">${typePill('agent')} from plugin "${esc(a.pluginName)}"</div>`;
+  let html = `<div class="detail-title">${ICONS.agent} ${esc(a.name)}</div>`;
+  html += `<div class="detail-subtitle">from plugin "${esc(a.pluginName)}"</div>`;
   html += `<div class="detail-section">`;
   if (a.description) html += `<div class="info-row"><span class="info-label">Description</span><span class="info-value">${esc(truncate(a.description, 200))}</span></div>`;
   if (a.model) html += `<div class="info-row"><span class="info-label">Model</span><span class="info-value">${pill(a.model,'accent')}</span></div>`;
@@ -736,8 +690,8 @@ function showPluginAgent(el, node) {
 
 function showPluginHook(el, node) {
   const h = node.data;
-  let html = `<div class="detail-title">🪝 ${esc(h.event)}</div>`;
-  html += `<div class="detail-subtitle">${typePill('hook')} from plugin "${esc(h.pluginName)}"</div>`;
+  let html = `<div class="detail-title">${ICONS.hook} ${esc(h.event)}</div>`;
+  html += `<div class="detail-subtitle">from plugin "${esc(h.pluginName)}"</div>`;
   html += `<div class="detail-section">`;
   if (h.description) html += `<div class="info-row"><span class="info-label">Description</span><span class="info-value">${esc(h.description)}</span></div>`;
   html += `</div>`;
@@ -746,11 +700,11 @@ function showPluginHook(el, node) {
 
 function showSkill(el, node) {
   const s = node.data;
-  let html = `<div class="detail-title">⚡ /${esc(s.name)}</div>`;
+  let html = `<div class="detail-title">${ICONS.skill} /${esc(s.name)}</div>`;
   if (s.source === 'plugin') {
-    html += `<div class="detail-subtitle">${typePill('skill')} from plugin "${esc(s.pluginName)}"</div>`;
+    html += `<div class="detail-subtitle">from plugin "${esc(s.pluginName)}"</div>`;
   } else {
-    html += `<div class="detail-subtitle">${typePill('skill')} · personal</div>`;
+    html += `<div class="detail-subtitle">· personal</div>`;
   }
   html += pathBar(s.path);
   html += `<div class="detail-section">`;
@@ -760,20 +714,6 @@ function showSkill(el, node) {
   if (s.allowedTools) html += `<div class="info-row"><span class="info-label">Tools</span><span class="info-value"><div class="pills">${s.allowedTools.split(',').map(t=>pill(t.trim(),'dim')).join('')}</div></span></div>`;
   if (s.argumentHint) html += `<div class="info-row"><span class="info-label">Arguments</span><span class="info-value"><code>${esc(s.argumentHint)}</code></span></div>`;
   html += `</div>`;
-  // Files section
-  if (node.children && node.children.length) {
-    html += `<div class="detail-section"><div class="detail-section-title">Files</div><div class="card-grid">`;
-    node.children.forEach(c => {
-      const cIcon = fileIcon(c.data?.name || c.label, c.type === 'directory');
-      const sizeStr = c.data?.size ? formatSize(c.data.size) : '';
-      const childCount = c.type === 'directory' && c.children ? c.children.length + ' items' : '';
-      html += `<div class="card" onclick="navigateToNode('${c.id}')"><div class="card-title">${cIcon} ${esc(c.label)}</div>`;
-      if (sizeStr) html += `<div class="card-desc">${sizeStr}</div>`;
-      if (childCount) html += `<div class="card-desc">${childCount}</div>`;
-      html += `</div>`;
-    });
-    html += `</div></div>`;
-  }
   el.innerHTML = html;
 }
 
@@ -782,8 +722,8 @@ function showMcp(el, node) {
   const cfg = m.config || {};
   const transport = cfg.type || (cfg.command ? 'stdio' : '?');
   const mcpFile = node.id.startsWith('mcp:p:') ? D.projectMcpPath : D.userMcpPath;
-  let html = `<div class="detail-title">🔌 ${esc(m.name)}</div>`;
-  html += `<div class="detail-subtitle">${typePill('mcp server')} · ${pill(transport,'dim')} transport · ${m.tools.length} tools</div>`;
+  let html = `<div class="detail-title">${ICONS.mcp} ${esc(m.name)}</div>`;
+  html += `<div class="detail-subtitle">${pill(transport,'dim')} transport · ${m.tools.length} tools</div>`;
   html += pathBar(mcpFile);
   html += `<div class="detail-section">`;
   if (cfg.command) html += `<div class="info-row"><span class="info-label">Command</span><span class="info-value">${fpath(cfg.command + (cfg.args ? ' ' + cfg.args.join(' ') : ''))}</span></div>`;
@@ -799,8 +739,7 @@ function showClaudeMd(el, node) {
   const m = node.data;
   const exists = m.data?.exists;
   const scopeColors = {managed:'managed',project:'project',user:'user',local:'local'};
-  let html = `<div class="detail-title">📄 ${esc(m.label)}</div>`;
-  html += `<div class="detail-subtitle">${typePill('claude.md')}</div>`;
+  let html = `<div class="detail-title">${ICONS.claudemd} ${esc(m.label)}</div>`;
   html += pathBar(m.data?.path);
   if (exists && m.data?.content) {
     html += `<div class="detail-section"><div class="detail-section-title">Content</div><div class="preview">${esc(m.data.content)}</div></div>`;
@@ -815,7 +754,7 @@ function showClaudeMd(el, node) {
     const cg = claudeGuides[m.scope];
     if (cg) {
       html += `<div style="display:flex;flex-direction:column;padding:40px 20px;max-width:440px;margin:0 auto">`;
-      html += `<div style="font-size:36px;opacity:0.7;margin-bottom:16px">📄</div>`;
+      html += `<div style="font-size:36px;opacity:0.7;margin-bottom:16px">${ICONS.claudemd}</div>`;
       html += `<div style="color:var(--text);font-size:13px;line-height:1.6;margin-bottom:20px">${cg.what}</div>`;
       html += `<div style="width:100%;border:1px solid var(--border);border-radius:8px;padding:14px 16px;background:var(--bg-card);margin-bottom:14px">`;
       html += `<div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:6px;font-weight:600">Example content</div>`;
@@ -828,7 +767,7 @@ function showClaudeMd(el, node) {
       html += `</div>`;
       html += `</div>`;
     } else {
-      html += `<div class="empty-state"><div class="empty-icon">📄</div><div class="empty-title">Not configured</div><div class="empty-hint">Create this file at ${fpath(paths[m.scope]||'')}</div></div>`;
+      html += `<div class="empty-state"><div class="empty-icon">${ICONS.claudemd}</div><div class="empty-title">Not configured</div><div class="empty-hint">Create this file at ${fpath(paths[m.scope]||'')}</div></div>`;
     }
   }
   el.innerHTML = html;
@@ -836,8 +775,7 @@ function showClaudeMd(el, node) {
 
 function showMemoryFile(el, node) {
   const m = node.data;
-  let html = `<div class="detail-title">📝 ${esc(m.name)}</div>`;
-  html += `<div class="detail-subtitle">${typePill('memory file')}</div>`;
+  let html = `<div class="detail-title">${ICONS['memory-file']} ${esc(m.name)}</div>`;
   html += pathBar(m.path);
   if (m.preview) html += `<div class="preview">${esc(m.preview)}</div>`;
   el.innerHTML = html;
@@ -845,8 +783,8 @@ function showMemoryFile(el, node) {
 
 function showRule(el, node) {
   const r = node.data;
-  let html = `<div class="detail-title">📏 ${esc(r.name)}</div>`;
-  html += `<div class="detail-subtitle">${typePill('rule')} · ${pill(r.scope,'project')}</div>`;
+  let html = `<div class="detail-title">${ICONS.rule} ${esc(r.name)}</div>`;
+  html += `<div class="detail-subtitle">· ${pill(r.scope,'project')}</div>`;
   html += pathBar(r.path);
   if (r.paths) html += `<div class="detail-section"><div class="detail-section-title">Applies to</div><div class="pills">${r.paths.map(p=>pill(p,'accent')).join('')}</div></div>`;
   if (r.content) html += `<div class="detail-section"><div class="detail-section-title">Content</div><div class="preview">${esc(r.content)}</div></div>`;
@@ -855,9 +793,9 @@ function showRule(el, node) {
 
 function showAgent(el, node) {
   const a = node.data;
-  let html = `<div class="detail-title">🤖 ${esc(a.name)}</div>`;
+  let html = `<div class="detail-title">${ICONS.agent} ${esc(a.name)}</div>`;
   const agentSource = a.scope === 'built-in' ? '· built-in' : a.scope === 'project' ? '· project' : '· personal';
-  html += `<div class="detail-subtitle">${typePill('agent')} ${agentSource}</div>`;
+  html += `<div class="detail-subtitle">${agentSource}</div>`;
   html += pathBar(a.path);
   html += `<div class="detail-section">`;
   if (a.description) html += `<div class="info-row"><span class="info-label">Description</span><span class="info-value">${esc(a.description)}</span></div>`;
@@ -872,7 +810,7 @@ function showAgent(el, node) {
 
 function showHook(el, node) {
   const h = node.data;
-  let html = `<div class="detail-title">${h.icon||'🔗'} ${esc(h.name)}</div>`;
+  let html = `<div class="detail-title">${h.icon||ICONS.hook} ${esc(h.name)}</div>`;
   html += `<div class="detail-subtitle">${esc(h.description)}</div>`;
   el.innerHTML = html;
 }
@@ -880,8 +818,8 @@ function showHook(el, node) {
 function showHookHandler(el, node) {
   const h = node.data;
   const label = h.matcher || '(all)';
-  let html = `<div class="detail-title">🪝 ${esc(h.event)} · ${esc(label)}</div>`;
-  html += `<div class="detail-subtitle">${typePill('hook')} · ${h.scope}</div>`;
+  let html = `<div class="detail-title">${ICONS.hook} ${esc(h.event)} · ${esc(label)}</div>`;
+  html += `<div class="detail-subtitle">· ${h.scope}</div>`;
   html += pathBar(h.settingsPath);
   html += `<div class="detail-section">`;
   if (h.matcher) html += `<div class="info-row"><span class="info-label">Matcher</span><span class="info-value"><code>${esc(h.matcher)}</code></span></div>`;
@@ -900,8 +838,7 @@ function showSettingsLayer(el, node) {
   const scopeColors = {managed:'managed',project:'project',user:'user',local:'local'};
   const hasData = s.data && Object.keys(s.data).length;
   const settingsPaths = { user: D.userSettingsPath, project: D.projectSettingsPath, local: D.localSettingsPath };
-  let html = `<div class="detail-title">⚙️ ${esc(s.label)} Settings</div>`;
-  html += `<div class="detail-subtitle">${typePill('settings file')}</div>`;
+  let html = `<div class="detail-title">${ICONS.settings} ${esc(s.label)} Settings</div>`;
   html += pathBar(settingsPaths[s.scope]);
   if (hasData) {
     html += `<div class="detail-section">`;
@@ -918,7 +855,7 @@ function showSettingsLayer(el, node) {
     const sg = settingsGuides[s.scope];
     if (sg) {
       html += `<div style="display:flex;flex-direction:column;padding:40px 20px;max-width:440px;margin:0 auto">`;
-      html += `<div style="font-size:36px;opacity:0.7;margin-bottom:16px">⚙️</div>`;
+      html += `<div style="font-size:36px;opacity:0.7;margin-bottom:16px">${ICONS.settings}</div>`;
       html += `<div style="color:var(--text);font-size:13px;line-height:1.6;margin-bottom:20px">${sg.what}</div>`;
       html += `<div style="width:100%;border:1px solid var(--border);border-radius:8px;padding:14px 16px;background:var(--bg-card);margin-bottom:14px">`;
       html += `<div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:6px;font-weight:600">Example</div>`;
@@ -945,8 +882,8 @@ function showMarketplace(el, node) {
   const total = tabs.reduce((a,t)=>a+t.count,0);
   const installedCount = (cat.plugins||[]).filter(p=>p.installed).length;
 
-  let html = `<div class="detail-title">🏪 ${esc(m.name)}</div>`;
-  html += `<div class="detail-subtitle">${typePill('marketplace')} · ${total} items · ${installedCount} installed</div>`;
+  let html = `<div class="detail-title">${ICONS.marketplace} ${esc(m.name)}</div>`;
+  html += `<div class="detail-subtitle">${total} items · ${installedCount} installed</div>`;
   if (m.source?.repo) {
     html += `<div style="margin-bottom:16px"><a href="https://github.com/${esc(m.source.repo)}" target="_blank" style="color:var(--accent);font-size:12px;text-decoration:none">↗ github.com/${esc(m.source.repo)}</a></div>`;
   } else if (m.source?.path) {
