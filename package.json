@@ -5,6 +5,9 @@
   "bin": {
     "cci": "bin/cli.js"
   },
+  "scripts": {
+    "test": "node --test"
+  },
   "files": [
     "bin/",
     "lib/"

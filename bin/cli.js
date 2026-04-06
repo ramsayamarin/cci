@@ -25,8 +25,10 @@ const data = scan();
 
 // Inject into template
 const template = fs.readFileSync(path.join(__dirname, '..', 'lib', 'template.html'), 'utf8');
+const dashboardModule = fs.readFileSync(path.join(__dirname, '..', 'lib', 'dashboard.js'), 'utf8');
 const jsonData = JSON.stringify(data).replace(/<\//g, '<\\/');
-const output = template.replace('"__DASHBOARD_DATA__"', () => jsonData);
+const output = template.replace('"__DASHBOARD_MODULE__"', () => dashboardModule)
+                       .replace('"__DASHBOARD_DATA__"', () => jsonData);
 const outPath = path.join(process.env.TMPDIR || process.env.TEMP || '/tmp', 'cci.html');
 fs.writeFileSync(outPath, output);
 
