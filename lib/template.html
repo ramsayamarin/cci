@@ -173,6 +173,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sa
 <script>
 const D = "__DASHBOARD_DATA__";
 
+const ICONS = {
+  user: '👤', project: '📁', plugin: '📦', skill: '⚡', command: '💬',
+  agent: '🤖', hook: '🪝', mcp: '🔗', rule: '📏', claudemd: '📄',
+  settings: '⚙️', marketplace: '🏪', memory: '🧠', 'memory-file': '📝',
+  unlinked: '🔗', 'all-files': '📂'
+};
 const esc = s => { if(!s) return ''; const d=document.createElement('div'); d.textContent=String(s); return d.innerHTML; };
 const pill = (text, cls='dim') => `<span class="pill pill-${cls}">${esc(text)}</span>`;
 const dot = (s) => `<span class="dot dot-${s}"></span>`;
@@ -277,25 +283,24 @@ function buildTree() {
   const mkts = D.marketplaces ? Object.entries(D.marketplaces) : [];
 
   // === USER (Global) ===
-  const userNode = { id:'scope-user', icon:'👤', label:'User (Global)', children: [] };
+  const userNode = { id:'scope-user', icon:ICONS.user, label:'User (Global)', children: [] };
 
-  // === USER (Global) — always show all categories ===
+  // === USER (Global) - always show all categories ===
   const userPlugins = plugins.filter(p => p.scope !== 'project');
-  const uPlugins = { id:'user-plugins', icon:'📦', label:'Plugins', count: userPlugins.length, children: [] };
+  const uPlugins = { id:'user-plugins', icon:ICONS.plugin, label:'Plugins', count: userPlugins.length, children: [] };
   userPlugins.forEach(p => {
     const name = p.name || 'unknown';
     const skills = pluginSkills.filter(s => s.pluginName === name);
     const cmds = pluginCommands.filter(c => c.pluginName === name);
     const agents = pluginAgentsData.filter(a => a.pluginName === name);
     const hooks = pluginHooksData.filter(h => h.pluginName === name);
-    const child = { id:'plugin:'+name, icon:'📦', label: name, type:'plugin', data: p, dimmed: p.enabled === false, children: [] };
-    skills.forEach(s => { child.children.push({ id:'plugin-skill:'+name+':'+s.name, icon:'⚡', label: '/'+s.name, type:'skill', data: {...s, source:'plugin', pluginName:name}, children: buildFileChildren(s.files || [], 'plugin-skill:'+name+':'+s.name) }); });
-    cmds.forEach(c => { child.children.push({ id:'plugin-cmd:'+name+':'+c.name, icon:'💬', label: '/'+c.name, type:'plugin-command', data: {...c, source:'plugin', pluginName:name} }); });
-    agents.forEach(a => { child.children.push({ id:'plugin-agent:'+name+':'+a.name, icon:'🤖', label: a.name, type:'plugin-agent', data: {...a, source:'plugin', pluginName:name} }); });
-    hooks.forEach(h => { child.children.push({ id:'plugin-hook:'+name+':'+h.event, icon:'🪝', label: h.event, type:'plugin-hook', data: {...h, source:'plugin', pluginName:name} }); });
-    // Add "All Files" directory child showing raw filesystem
+    const child = { id:'plugin:'+name, icon:ICONS.plugin, label: name, type:'plugin', data: p, dimmed: p.enabled === false, children: [] };
+    skills.forEach(s => { child.children.push({ id:'plugin-skill:'+name+':'+s.name, icon:ICONS.skill, label: '/'+s.name, type:'skill', data: {...s, source:'plugin', pluginName:name}, children: buildFileChildren(s.files || [], 'plugin-skill:'+name+':'+s.name) }); });
+    cmds.forEach(c => { child.children.push({ id:'plugin-cmd:'+name+':'+c.name, icon:ICONS.command, label: '/'+c.name, type:'plugin-command', data: {...c, source:'plugin', pluginName:name} }); });
+    agents.forEach(a => { child.children.push({ id:'plugin-agent:'+name+':'+a.name, icon:ICONS.agent, label: a.name, type:'plugin-agent', data: {...a, source:'plugin', pluginName:name} }); });
+    hooks.forEach(h => { child.children.push({ id:'plugin-hook:'+name+':'+h.event, icon:ICONS.hook, label: h.event, type:'plugin-hook', data: {...h, source:'plugin', pluginName:name} }); });
     if (p.files && p.files.length) {
-      const allFilesNode = { id:'plugin-files:'+name, icon:'📂', label:'All Files', type:'directory', data: { name:'All Files', type:'directory', children: p.files, path: p.installPath }, children: buildFileChildren(p.files, 'plugin-files:'+name) };
+      const allFilesNode = { id:'plugin-files:'+name, icon:ICONS['all-files'], label:'All Files', type:'directory', data: { name:'All Files', type:'directory', children: p.files, path: p.installPath }, children: buildFileChildren(p.files, 'plugin-files:'+name) };
       child.children.push(allFilesNode);
     }
     uPlugins.children.push(child);
@@ -303,119 +308,138 @@ function buildTree() {
   userNode.children.push(uPlugins);
 
   const unlinkedPlugins = plugins.filter(p => p.scope === 'project' && p.unlinked);
-  const uUnlinked = { id:'user-unlinked-plugins', icon:'🔗', label:'Unlinked Plugins', count: unlinkedPlugins.length, children: [] };
+  const uUnlinked = { id:'user-unlinked-plugins', icon:ICONS.unlinked, label:'Unlinked Plugins', count: unlinkedPlugins.length, children: [] };
   unlinkedPlugins.forEach(p => {
     const name = p.name || 'unknown';
     const label = name + (p.projectPath ? '  (' + p.projectPath + ')' : '');
-    uUnlinked.children.push({ id:'plugin:unlinked:'+name, icon:'📦', label, type:'plugin', data: p, children: [] });
+    uUnlinked.children.push({ id:'plugin:unlinked:'+name, icon:ICONS.plugin, label, type:'plugin', data: p, children: [] });
   });
   if (unlinkedPlugins.length) userNode.children.push(uUnlinked);
 
   const userSkills = D.userSkills || [];
-  const uSkills = { id:'user-skills', icon:'⚡', label:'Skills', count: userSkills.length, children: [] };
+  const uSkills = { id:'user-skills', icon:ICONS.skill, label:'Skills', count: userSkills.length, children: [] };
   userSkills.forEach(s => {
-    const skillNode = { id:'skill:'+s.name, icon:'⚡', label: '/'+s.name, type:'skill', data: {...s, source:'personal'}, children: buildFileChildren(s.files || [], 'skill:'+s.name) };
+    const skillNode = { id:'skill:'+s.name, icon:ICONS.skill, label: '/'+s.name, type:'skill', data: {...s, source:'personal'}, children: buildFileChildren(s.files || [], 'skill:'+s.name) };
     uSkills.children.push(skillNode);
   });
   userNode.children.push(uSkills);
 
   const userCommands = D.userCommands || [];
-  const uCommands = { id:'user-commands', icon:'💬', label:'Commands', count: userCommands.length, children: [] };
-  userCommands.forEach(c => { uCommands.children.push({ id:'command:'+c.name, icon:'💬', label: '/'+c.name, type:'command', data: {...c, source:'personal'} }); });
+  const uCommands = { id:'user-commands', icon:ICONS.command, label:'Commands', count: userCommands.length, children: [] };
+  userCommands.forEach(c => { uCommands.children.push({ id:'command:'+c.name, icon:ICONS.command, label: '/'+c.name, type:'command', data: {...c, source:'personal'} }); });
   userNode.children.push(uCommands);
 
-  const uMcp = { id:'user-mcp', icon:'🔗', label:'MCP Servers', count: Object.keys(allMcp).length, children: [] };
-  Object.entries(allMcp).forEach(([name, info]) => { uMcp.children.push({ id:'mcp:'+name, icon:'🔗', label: name, type:'mcp', data: { name, ...info } }); });
+  const uMcp = { id:'user-mcp', icon:ICONS.mcp, label:'MCP Servers', count: Object.keys(allMcp).length, children: [] };
+  Object.entries(allMcp).forEach(([name, info]) => { uMcp.children.push({ id:'mcp:'+name, icon:ICONS.mcp, label: name, type:'mcp', data: { name, ...info } }); });
   userNode.children.push(uMcp);
 
-  const uAgents = { id:'user-agents', icon:'🤖', label:'Agents', count: (D.userAgents||[]).length, children: [] };
-  (D.userAgents||[]).forEach(a => { uAgents.children.push({ id:'agent:'+a.name, icon:'🤖', label: a.name, type:'agent', data: {...a, scope:'user'} }); });
+  const uAgents = { id:'user-agents', icon:ICONS.agent, label:'Agents', count: (D.userAgents||[]).length, children: [] };
+  (D.userAgents||[]).forEach(a => { uAgents.children.push({ id:'agent:'+a.name, icon:ICONS.agent, label: a.name, type:'agent', data: {...a, scope:'user'} }); });
   userNode.children.push(uAgents);
 
-  userNode.children.push({ id:'claudemd:user', icon: D.userClaudeMd?.exists ? '📄' : '○', label:'CLAUDE.md', type:'claudemd', data: { id:'claudemd:user', label:'User CLAUDE.md', scope:'user', data: D.userClaudeMd } });
+  userNode.children.push({ id:'claudemd:user', icon:ICONS.claudemd, label:'CLAUDE.md', type:'claudemd', data: { id:'claudemd:user', label:'User CLAUDE.md', scope:'user', data: D.userClaudeMd } });
 
-  const uRules = { id:'user-rules', icon:'📏', label:'Rules', count: (D.userRules||[]).length, children: [] };
-  (D.userRules||[]).forEach(r => { uRules.children.push({ id:'rule:u:'+r.name, icon:'📏', label: r.name, type:'rule', data: {...r, scope:'user'} }); });
+  const uRules = { id:'user-rules', icon:ICONS.rule, label:'Rules', count: (D.userRules||[]).length, children: [] };
+  (D.userRules||[]).forEach(r => { uRules.children.push({ id:'rule:u:'+r.name, icon:ICONS.rule, label: r.name, type:'rule', data: {...r, scope:'user'} }); });
   userNode.children.push(uRules);
 
-  const uHooks = { id:'user-hooks', icon:'🪝', label:'Hooks', count: 0, children: [] };
-  if (D.userSettings?.hooks) { Object.entries(D.userSettings.hooks).forEach(([evt, h]) => { uHooks.count += Array.isArray(h)?h.length:1; }); }
+  const uHooks = { id:'user-hooks', icon:ICONS.hook, label:'Hooks', count: 0, children: [] };
+  (D.hookEvents||[]).forEach(he => {
+    const handlers = D.userSettings?.hooks?.[he.name];
+    const arr = handlers ? (Array.isArray(handlers) ? handlers : [handlers]) : [];
+    uHooks.count += arr.length;
+    const eventNode = { id:'hook:u:'+he.name, icon: he.icon, label: he.name, type:'hook', data: he, dimmed: !arr.length, count: arr.length, children: [] };
+    arr.forEach((h, i) => {
+      const label = h.matcher || '(all)';
+      eventNode.children.push({ id:'hook:u:'+he.name+':'+i, icon:ICONS.hook, label, type:'hook-handler', data: { ...h, event: he.name, scope: 'user', settingsPath: D.userSettingsPath } });
+    });
+    uHooks.children.push(eventNode);
+  });
   userNode.children.push(uHooks);
 
-  userNode.children.push({ id:'settings:user', icon: D.userSettings ? '⚙️' : '○', label:'Settings', type:'settings-layer', data: { scope:'user', label:'User', data: D.userSettings } });
+  userNode.children.push({ id:'settings:user', icon:ICONS.settings, label:'Settings', type:'settings-layer', data: { scope:'user', label:'User', data: D.userSettings } });
 
   const mktCats = D.marketplaceCatalogs || {};
-  // Start with known marketplaces, then add any that are install-sources of plugins
   const knownNames = new Set(mkts.map(([n]) => n));
   const installSources = new Set(plugins.map(p => p.marketplace).filter(Boolean));
   const extraMkts = [...installSources].filter(n => !knownNames.has(n) && mktCats[n]);
-  const mktNode = { id:'marketplaces', icon:'🏪', label:'Marketplaces', count: mkts.length + extraMkts.length, children: [] };
-  mkts.forEach(([name, cfg]) => { mktNode.children.push({ id:'mkt:'+name, icon:'🏪', label: name, type:'marketplace', data: {name, ...cfg} }); });
-  extraMkts.forEach(name => { mktNode.children.push({ id:'mkt:'+name, icon:'🏪', label: name, type:'marketplace', data: {name} }); });
+  const mktNode = { id:'marketplaces', icon:ICONS.marketplace, label:'Marketplaces', count: mkts.length + extraMkts.length, children: [] };
+  mkts.forEach(([name, cfg]) => { mktNode.children.push({ id:'mkt:'+name, icon:ICONS.marketplace, label: name, type:'marketplace', data: {name, ...cfg} }); });
+  extraMkts.forEach(name => { mktNode.children.push({ id:'mkt:'+name, icon:ICONS.marketplace, label: name, type:'marketplace', data: {name} }); });
   userNode.children.push(mktNode);
 
-  // === PROJECT — always show all categories ===
+  // === PROJECT - always show all categories ===
   const projPath = D.projectPath || 'Current Project';
   const projLabel = projPath.split('\\').pop() || projPath.split('/').pop() || projPath;
-  const projNode = { id:'scope-project', icon:'📁', label:'Project (' + projLabel + ')', children: [] };
+  const projNode = { id:'scope-project', icon:ICONS.project, label:'Project (' + projLabel + ')', children: [] };
 
   const projPlugins = plugins.filter(p => p.scope === 'project' && p.currentProject);
-  const pPlugins = { id:'proj-plugins', icon:'📦', label:'Plugins', count: projPlugins.length, children: [] };
+  const pPlugins = { id:'proj-plugins', icon:ICONS.plugin, label:'Plugins', count: projPlugins.length, children: [] };
   projPlugins.forEach(p => {
     const name = p.name || 'unknown';
     const pSkillsList = pluginSkills.filter(s => s.pluginName === name);
     const pCmds = pluginCommands.filter(c => c.pluginName === name);
     const pAgentsList = pluginAgentsData.filter(a => a.pluginName === name);
     const pHooks = pluginHooksData.filter(h => h.pluginName === name);
-    const child = { id:'plugin:p:'+name, icon:'📦', label: name, type:'plugin', data: p, dimmed: p.enabled === false, children: [] };
-    pSkillsList.forEach(s => { child.children.push({ id:'plugin-skill:p:'+name+':'+s.name, icon:'⚡', label: '/'+s.name, type:'skill', data: {...s, source:'plugin', pluginName:name}, children: buildFileChildren(s.files || [], 'plugin-skill:p:'+name+':'+s.name) }); });
-    pCmds.forEach(c => { child.children.push({ id:'plugin-cmd:p:'+name+':'+c.name, icon:'💬', label: '/'+c.name, type:'plugin-command', data: {...c, source:'plugin', pluginName:name} }); });
-    pAgentsList.forEach(a => { child.children.push({ id:'plugin-agent:p:'+name+':'+a.name, icon:'🤖', label: a.name, type:'plugin-agent', data: {...a, source:'plugin', pluginName:name} }); });
-    pHooks.forEach(h => { child.children.push({ id:'plugin-hook:p:'+name+':'+h.event, icon:'🪝', label: h.event, type:'plugin-hook', data: {...h, source:'plugin', pluginName:name} }); });
+    const child = { id:'plugin:p:'+name, icon:ICONS.plugin, label: name, type:'plugin', data: p, dimmed: p.enabled === false, children: [] };
+    pSkillsList.forEach(s => { child.children.push({ id:'plugin-skill:p:'+name+':'+s.name, icon:ICONS.skill, label: '/'+s.name, type:'skill', data: {...s, source:'plugin', pluginName:name}, children: buildFileChildren(s.files || [], 'plugin-skill:p:'+name+':'+s.name) }); });
+    pCmds.forEach(c => { child.children.push({ id:'plugin-cmd:p:'+name+':'+c.name, icon:ICONS.command, label: '/'+c.name, type:'plugin-command', data: {...c, source:'plugin', pluginName:name} }); });
+    pAgentsList.forEach(a => { child.children.push({ id:'plugin-agent:p:'+name+':'+a.name, icon:ICONS.agent, label: a.name, type:'plugin-agent', data: {...a, source:'plugin', pluginName:name} }); });
+    pHooks.forEach(h => { child.children.push({ id:'plugin-hook:p:'+name+':'+h.event, icon:ICONS.hook, label: h.event, type:'plugin-hook', data: {...h, source:'plugin', pluginName:name} }); });
     if (p.files && p.files.length) {
-      const allFilesNode = { id:'plugin-files:p:'+name, icon:'📂', label:'All Files', type:'directory', data: { name:'All Files', type:'directory', children: p.files, path: p.installPath }, children: buildFileChildren(p.files, 'plugin-files:p:'+name) };
+      const allFilesNode = { id:'plugin-files:p:'+name, icon:ICONS['all-files'], label:'All Files', type:'directory', data: { name:'All Files', type:'directory', children: p.files, path: p.installPath }, children: buildFileChildren(p.files, 'plugin-files:p:'+name) };
       child.children.push(allFilesNode);
     }
     pPlugins.children.push(child);
   });
   projNode.children.push(pPlugins);
 
-  const pSkills = { id:'proj-skills', icon:'⚡', label:'Skills', count: (D.projectSkills||[]).length, children: [] };
+  const pSkills = { id:'proj-skills', icon:ICONS.skill, label:'Skills', count: (D.projectSkills||[]).length, children: [] };
   (D.projectSkills||[]).forEach(s => {
-    const skillNode = { id:'skill:p:'+s.name, icon:'⚡', label: '/'+s.name, type:'skill', data: {...s, source:'project'}, children: buildFileChildren(s.files || [], 'skill:p:'+s.name) };
+    const skillNode = { id:'skill:p:'+s.name, icon:ICONS.skill, label: '/'+s.name, type:'skill', data: {...s, source:'project'}, children: buildFileChildren(s.files || [], 'skill:p:'+s.name) };
     pSkills.children.push(skillNode);
   });
   projNode.children.push(pSkills);
 
-  const pCommands = { id:'proj-commands', icon:'💬', label:'Commands', count: (D.projectCommands||[]).length, children: [] };
-  (D.projectCommands||[]).forEach(c => { pCommands.children.push({ id:'command:p:'+c.name, icon:'💬', label: '/'+c.name, type:'command', data: {...c, source:'project'} }); });
+  const pCommands = { id:'proj-commands', icon:ICONS.command, label:'Commands', count: (D.projectCommands||[]).length, children: [] };
+  (D.projectCommands||[]).forEach(c => { pCommands.children.push({ id:'command:p:'+c.name, icon:ICONS.command, label: '/'+c.name, type:'command', data: {...c, source:'project'} }); });
   projNode.children.push(pCommands);
 
-  const pMcp = { id:'proj-mcp', icon:'🔗', label:'MCP Servers', count: Object.keys(D.projectMcp?.mcpServers||{}).length, children: [] };
-  Object.entries(D.projectMcp?.mcpServers||{}).forEach(([name, cfg]) => { pMcp.children.push({ id:'mcp:p:'+name, icon:'🔗', label: name, type:'mcp', data: { name, config: cfg, tools: [] } }); });
+  const pMcp = { id:'proj-mcp', icon:ICONS.mcp, label:'MCP Servers', count: Object.keys(D.projectMcp?.mcpServers||{}).length, children: [] };
+  Object.entries(D.projectMcp?.mcpServers||{}).forEach(([name, cfg]) => { pMcp.children.push({ id:'mcp:p:'+name, icon:ICONS.mcp, label: name, type:'mcp', data: { name, config: cfg, tools: [] } }); });
   projNode.children.push(pMcp);
 
-  const pAgents = { id:'proj-agents', icon:'🤖', label:'Agents', count: (D.projectAgents||[]).length, children: [] };
-  (D.projectAgents||[]).forEach(a => { pAgents.children.push({ id:'agent:p:'+a.name, icon:'🤖', label: a.name, type:'agent', data: {...a, scope:'project'} }); });
+  const pAgents = { id:'proj-agents', icon:ICONS.agent, label:'Agents', count: (D.projectAgents||[]).length, children: [] };
+  (D.projectAgents||[]).forEach(a => { pAgents.children.push({ id:'agent:p:'+a.name, icon:ICONS.agent, label: a.name, type:'agent', data: {...a, scope:'project'} }); });
   projNode.children.push(pAgents);
 
-  projNode.children.push({ id:'claudemd:project', icon: D.projectClaudeMd?.exists ? '📄' : '○', label:'CLAUDE.md', type:'claudemd', data: { id:'claudemd:project', label:'Project CLAUDE.md', scope:'project', data: D.projectClaudeMd } });
-  projNode.children.push({ id:'claudemd:local', icon: D.localClaudeMd?.exists ? '📄' : '○', label:'CLAUDE.local.md', type:'claudemd', data: { id:'claudemd:local', label:'Local CLAUDE.md', scope:'local', data: D.localClaudeMd } });
+  projNode.children.push({ id:'claudemd:project', icon:ICONS.claudemd, label:'CLAUDE.md', type:'claudemd', data: { id:'claudemd:project', label:'Project CLAUDE.md', scope:'project', data: D.projectClaudeMd } });
+  projNode.children.push({ id:'claudemd:local', icon:ICONS.claudemd, label:'CLAUDE.local.md', type:'claudemd', data: { id:'claudemd:local', label:'Local CLAUDE.md', scope:'local', data: D.localClaudeMd } });
 
-  const pRules = { id:'proj-rules', icon:'📏', label:'Rules', count: (D.projectRules||[]).length, children: [] };
-  (D.projectRules||[]).forEach(r => { pRules.children.push({ id:'rule:p:'+r.name, icon:'📏', label: r.name, type:'rule', data: {...r, scope:'project'} }); });
+  const pRules = { id:'proj-rules', icon:ICONS.rule, label:'Rules', count: (D.projectRules||[]).length, children: [] };
+  (D.projectRules||[]).forEach(r => { pRules.children.push({ id:'rule:p:'+r.name, icon:ICONS.rule, label: r.name, type:'rule', data: {...r, scope:'project'} }); });
   projNode.children.push(pRules);
 
-  const pHooks = { id:'proj-hooks', icon:'🪝', label:'Hooks', count: 0, children: [] };
-  if (D.projectSettings?.hooks) { Object.entries(D.projectSettings.hooks).forEach(([evt, h]) => { pHooks.count += Array.isArray(h)?h.length:1; }); }
+  const pHooks = { id:'proj-hooks', icon:ICONS.hook, label:'Hooks', count: 0, children: [] };
+  (D.hookEvents||[]).forEach(he => {
+    const handlers = D.projectSettings?.hooks?.[he.name];
+    const arr = handlers ? (Array.isArray(handlers) ? handlers : [handlers]) : [];
+    pHooks.count += arr.length;
+    const eventNode = { id:'hook:p:'+he.name, icon: he.icon, label: he.name, type:'hook', data: he, dimmed: !arr.length, count: arr.length, children: [] };
+    arr.forEach((h, i) => {
+      const label = h.matcher || '(all)';
+      eventNode.children.push({ id:'hook:p:'+he.name+':'+i, icon:ICONS.hook, label, type:'hook-handler', data: { ...h, event: he.name, scope: 'project', settingsPath: D.projectSettingsPath } });
+    });
+    pHooks.children.push(eventNode);
+  });
   projNode.children.push(pHooks);
 
-  const pMemory = { id:'proj-memory', icon:'🧠', label:'Auto Memory', count: (D.autoMemory||[]).length, children: [] };
-  (D.autoMemory||[]).forEach(m => { pMemory.children.push({ id:'memory:'+m.name, icon:'📝', label: m.name, type:'memory-file', data: m }); });
+  const pMemory = { id:'proj-memory', icon:ICONS.memory, label:'Auto Memory', count: (D.autoMemory||[]).length, children: [] };
+  (D.autoMemory||[]).forEach(m => { pMemory.children.push({ id:'memory:'+m.name, icon:ICONS['memory-file'], label: m.name, type:'memory-file', data: m }); });
   projNode.children.push(pMemory);
 
-  projNode.children.push({ id:'settings:project', icon: D.projectSettings ? '⚙️' : '○', label:'Settings', type:'settings-layer', data: { scope:'project', label:'Project', data: D.projectSettings } });
-  projNode.children.push({ id:'settings:local', icon: D.localSettings ? '⚙️' : '○', label:'Local Settings', type:'settings-layer', data: { scope:'local', label:'Local', data: D.localSettings } });
+  projNode.children.push({ id:'settings:project', icon:ICONS.settings, label:'Settings', type:'settings-layer', data: { scope:'project', label:'Project', data: D.projectSettings } });
+  projNode.children.push({ id:'settings:local', icon:ICONS.settings, label:'Local Settings', type:'settings-layer', data: { scope:'local', label:'Local', data: D.localSettings } });
 
   tree.push(userNode);
   tree.push(projNode);
@@ -518,6 +542,7 @@ function showDetail(node) {
   if (node.type === 'rule') return showRule(el, node);
   if (node.type === 'agent') return showAgent(el, node);
   if (node.type === 'hook') return showHook(el, node);
+  if (node.type === 'hook-handler') return showHookHandler(el, node);
   if (node.type === 'settings-layer') return showSettingsLayer(el, node);
   if (node.type === 'marketplace') return showMarketplace(el, node);
   // Scope nodes — just expand in tree, clear detail
@@ -847,30 +872,26 @@ function showAgent(el, node) {
 
 function showHook(el, node) {
   const h = node.data;
-  // Check if any hooks are configured for this event
-  let configured = [];
-  for (const [src, label] of [[D.userSettings,'user'],[D.projectSettings,'project'],[D.localSettings,'local']]) {
-    if (src?.hooks?.[h.name]) {
-      const handlers = src.hooks[h.name];
-      (Array.isArray(handlers)?handlers:[handlers]).forEach(hh => configured.push({...hh, scope:label}));
-    }
-  }
-  const hookFile = configured.length ? (configured[0].scope === 'user' ? D.userSettingsPath : D.projectSettingsPath) : null;
   let html = `<div class="detail-title">${h.icon||'🔗'} ${esc(h.name)}</div>`;
-  html += `<div class="detail-subtitle">${typePill('hook')} · ${esc(h.description)}</div>`;
-  html += pathBar(hookFile);
-  if (configured.length) {
-    html += `<div class="detail-section"><div class="detail-section-title">Configured Hooks</div>`;
-    configured.forEach(c => {
-      html += `<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px">`;
-      html += `${pill(c.scope,'user')} `;
-      if (c.matcher) html += `matcher: <code>${esc(c.matcher)}</code> `;
-      html += `</div>`;
-    });
-    html += `</div>`;
-  } else {
-    html += `<div class="empty-state"><div class="empty-hint">No hooks configured for this event. Add hooks in settings.json under the "hooks" field.</div></div>`;
-  }
+  html += `<div class="detail-subtitle">${esc(h.description)}</div>`;
+  el.innerHTML = html;
+}
+
+function showHookHandler(el, node) {
+  const h = node.data;
+  const label = h.matcher || '(all)';
+  let html = `<div class="detail-title">🪝 ${esc(h.event)} · ${esc(label)}</div>`;
+  html += `<div class="detail-subtitle">${typePill('hook')} · ${h.scope}</div>`;
+  html += pathBar(h.settingsPath);
+  html += `<div class="detail-section">`;
+  if (h.matcher) html += `<div class="info-row"><span class="info-label">Matcher</span><span class="info-value"><code>${esc(h.matcher)}</code></span></div>`;
+  const cmds = h.hooks || [];
+  cmds.forEach((c, i) => {
+    const prefix = cmds.length > 1 ? `Command ${i+1}` : 'Command';
+    html += `<div class="info-row"><span class="info-label">${prefix}</span><span class="info-value"><code>${esc(c.command || '')}</code></span></div>`;
+    if (c.timeout) html += `<div class="info-row"><span class="info-label">Timeout</span><span class="info-value">${c.timeout}ms</span></div>`;
+  });
+  html += `</div>`;
   el.innerHTML = html;
 }
 
