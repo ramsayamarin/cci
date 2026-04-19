@@ -50,9 +50,10 @@ describe('printInline', () => {
     assert.ok(!out.includes('Marketplaces'), 'output should not contain Marketplaces');
   });
 
-  it('dims empty sections with ANSI escape codes', () => {
+  it('dims empty sections with ANSI escape codes and omits (0) count', () => {
     const out = capture(() => printInline(emptyData(), { color: true }));
-    assert.match(out, /\x1b\[2m.*Plugins \(0\).*\x1b\[0m/);
+    assert.match(out, /\x1b\[2m.*Plugins\x1b\[0m/);
+    assert.ok(!out.includes('(0)'), 'output should not include any (0) count suffixes');
   });
 
   it('does not dim sections that have handlers', () => {
