@@ -8,9 +8,14 @@ const { scan } = require('../lib/scan');
 const args = process.argv.slice(2);
 
 if (args.includes('--help') || args.includes('-h')) {
-  console.log(`Usage: cci
+  console.log(`Usage: cci [options]
 
-Opens an interactive dashboard showing all Claude Code configuration.`);
+Opens an interactive dashboard showing all Claude Code configuration.
+
+Options:
+  -h, --help     Show this help message
+  -p, --print    Print an inline summary to the terminal instead of
+                 opening the HTML dashboard (excludes marketplaces)`);
   process.exit(0);
 }
 
@@ -22,6 +27,12 @@ if (subcommand) {
 
 // Scan configuration
 const data = scan();
+
+const wantsPrint = args.some(a => a === '--print' || a === '-p' || a.startsWith('--print=') || a.startsWith('-p='));
+if (wantsPrint) {
+  require('../lib/print').printInline(data);
+  process.exit(0);
+}
 
 // Inject into template
 const template = fs.readFileSync(path.join(__dirname, '..', 'lib', 'template.html'), 'utf8');
