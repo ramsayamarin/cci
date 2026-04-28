@@ -1,6 +1,6 @@
 {
   "name": "claude-cci",
-  "version": "0.1.8",
+  "version": "0.2.0",
   "description": "Inspect Claude Code and GitHub Copilot CLI configuration — skills, plugins, MCP servers, memory, hooks, agents, settings, marketplaces, permissions",
   "bin": {
     "cci": "bin/cli.js"
