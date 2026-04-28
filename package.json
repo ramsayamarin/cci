@@ -1,7 +1,7 @@
 {
   "name": "claude-cci",
   "version": "0.1.8",
-  "description": "Inspect Claude Code configuration - skills, plugins, MCP servers, memory, hooks, agents, settings, marketplace",
+  "description": "Inspect Claude Code and GitHub Copilot CLI configuration — skills, plugins, MCP servers, memory, hooks, agents, settings, marketplaces, permissions",
   "bin": {
     "cci": "bin/cli.js"
   },
@@ -26,6 +26,9 @@
     "claude",
     "claude-code",
     "anthropic",
+    "copilot",
+    "copilot-cli",
+    "github-copilot",
     "inspector",
     "dashboard",
     "cli"

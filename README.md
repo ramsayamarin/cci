@@ -1,6 +1,6 @@
-# cci — Claude Code Inspector
+# cci — Claude Code & Copilot CLI Inspector
 
-A CLI tool that scans your Claude Code configuration and opens a visual dashboard in the browser.
+A CLI tool that scans your Claude Code or GitHub Copilot CLI configuration and opens a visual dashboard in the browser.
 
 <img src="assets/cci-demo.png" alt="cci dashboard screenshot" width="680">
 
@@ -37,6 +37,37 @@ Scans `~/.claude/`, `~/.claude.json`, and the current project's `.claude/` direc
 - **Hooks** — configured hook events
 - **Auto Memory** — memory files Claude has written for your project
 - **Settings** — user, project, and local settings with precedence view
+
+## Copilot CLI mode
+
+`cci` also inspects [GitHub Copilot CLI](https://github.com/github/copilot-cli) configuration. Mode is auto-detected from your home directory (presence of `~/.claude` vs `~/.copilot`); force a specific mode with a flag:
+
+```bash
+cci --copilot
+cci --claude
+```
+
+You can also set `CCI_MODE=copilot-cli` (or `claude-code`) in your environment.
+
+In Copilot CLI mode, the dashboard surfaces:
+
+- **Settings** (`~/.copilot/settings.json`) — model, theme, allowed URLs, enabled plugins
+- **Logged-in users**, **trusted folders**, and **session sync** entries (from `~/.copilot/config.json`)
+- **MCP Servers** (`~/.copilot/mcp-config.json`)
+- **Permissions** — per-folder tool approvals (`~/.copilot/permissions-config.json`); the current working directory is highlighted, missing folders are dimmed
+- **Plugins** under `~/.copilot/installed-plugins/<marketplace>/<plugin>/` along with their skills, commands, agents, and hooks
+- **Marketplaces** cached under `~/.copilot/marketplace-cache/`
+
+Copilot CLI has no project-level config directory, so the *Project* scope is empty in that mode.
+
+## Flags
+
+| Flag | Description |
+|---|---|
+| `-h`, `--help` | Show help |
+| `-p`, `--print` | Print an inline summary to the terminal instead of opening the dashboard |
+| `--copilot` | Force Copilot CLI mode |
+| `--claude` | Force Claude Code mode |
 
 ## Requirements
 
