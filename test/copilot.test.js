@@ -114,3 +114,158 @@ describe('scanCopilot — settings, config, mcp', () => {
     assert.deepEqual(data.trustedFolders, []);
   });
 });
+
+describe('scanCopilot — plugins', () => {
+  function setupPlugin(home, mkt, name, opts) {
+    opts = opts || {};
+    const root = path.join(home, '.copilot/installed-plugins', mkt, name);
+    fs.mkdirSync(path.join(root, '.claude-plugin'), { recursive: true });
+    writeJson(home, path.join('.copilot/installed-plugins', mkt, name, '.claude-plugin/plugin.json'),
+      { name, version: opts.version || '1.0.0', description: opts.desc || '' });
+    if (opts.skills) {
+      opts.skills.forEach(s => {
+        const sd = path.join(root, 'skills', s.dir);
+        fs.mkdirSync(sd, { recursive: true });
+        fs.writeFileSync(path.join(sd, 'SKILL.md'),
+          `---\nname: ${s.name}\ndescription: ${s.desc || ''}\n---\nbody`);
+      });
+    }
+    if (opts.commands) {
+      const cd = path.join(root, 'commands'); fs.mkdirSync(cd, { recursive: true });
+      opts.commands.forEach(c => {
+        fs.writeFileSync(path.join(cd, c.file),
+          `---\nname: ${c.name}\ndescription: ${c.desc || ''}\nargument-hint: ${c.hint || ''}\n---`);
+      });
+    }
+    if (opts.agents) {
+      const ad = path.join(root, 'agents'); fs.mkdirSync(ad, { recursive: true });
+      opts.agents.forEach(a => {
+        fs.writeFileSync(path.join(ad, a.file),
+          `---\nname: ${a.name}\ndescription: ${a.desc || ''}\nmodel: ${a.model || ''}\n---`);
+      });
+    }
+    if (opts.hooks) {
+      writeJson(home, path.join('.copilot/installed-plugins', mkt, name, 'hooks/hooks.json'),
+        { description: opts.hooksDesc || '', hooks: opts.hooks });
+    }
+    return root;
+  }
+
+  it('discovers plugins and resolves enabled from settings.enabledPlugins', () => {
+    const home = tmp();
+    setupPlugin(home, 'mp', 'sp', {});
+    setupPlugin(home, 'mp', 'off', {});
+    writeJson(home, '.copilot/settings.json', {
+      enabledPlugins: { 'sp@mp': true, 'off@mp': false }
+    });
+    writeJson(home, '.copilot/config.json', {
+      installedPlugins: [
+        { name: 'sp', marketplace: 'mp', version: '1.0.0', installed_at: '2026-04-01T00:00:00Z',
+          enabled: true, cache_path: path.join(home, '.copilot/installed-plugins/mp/sp') },
+        { name: 'off', marketplace: 'mp', version: '0.1.0', installed_at: '2026-04-02T00:00:00Z',
+          enabled: false, cache_path: path.join(home, '.copilot/installed-plugins/mp/off') }
+      ]
+    });
+    const data = scanCopilot({ home, cwd: home });
+    assert.equal(data.installedPlugins.length, 2);
+    const sp = data.installedPlugins.find(p => p.name === 'sp');
+    assert.equal(sp.enabled, true);
+    assert.equal(sp.marketplace, 'mp');
+    assert.equal(sp.scope, 'user');
+    assert.equal(sp.version, '1.0.0');
+    assert.equal(sp.installedAt, '2026-04-01T00:00:00Z');
+    assert.equal(sp.installPath, path.join(home, '.copilot/installed-plugins/mp/sp'));
+    assert.equal(sp.projectPath, null);
+    assert.equal(sp.unlinked, false);
+    assert.equal(sp.currentProject, false);
+    assert.ok(Array.isArray(sp.files));
+    const off = data.installedPlugins.find(p => p.name === 'off');
+    assert.equal(off.enabled, false);
+  });
+
+  it('falls back to record.enabled when settings.enabledPlugins lacks a key', () => {
+    const home = tmp();
+    setupPlugin(home, 'mp', 'a', {});
+    setupPlugin(home, 'mp', 'b', {});
+    writeJson(home, '.copilot/settings.json', {});
+    writeJson(home, '.copilot/config.json', {
+      installedPlugins: [
+        { name: 'a', marketplace: 'mp', enabled: true,
+          cache_path: path.join(home, '.copilot/installed-plugins/mp/a') },
+        { name: 'b', marketplace: 'mp', enabled: false,
+          cache_path: path.join(home, '.copilot/installed-plugins/mp/b') }
+      ]
+    });
+    const data = scanCopilot({ home, cwd: home });
+    assert.equal(data.installedPlugins.find(p => p.name === 'a').enabled, true);
+    assert.equal(data.installedPlugins.find(p => p.name === 'b').enabled, false);
+  });
+
+  it('discovers skills/commands/agents/hooks under each plugin', () => {
+    const home = tmp();
+    setupPlugin(home, 'mp', 'sp', {
+      skills: [{ dir: 'tdd', name: 'test-driven-development', desc: 'Use TDD' }],
+      commands: [{ file: 'run.md', name: 'run', desc: 'Run a thing', hint: '<arg>' }],
+      agents: [{ file: 'code-reviewer.md', name: 'code-reviewer', desc: 'Review', model: 'opus' }],
+      hooksDesc: 'session hooks',
+      hooks: { 'session-start': [{ command: 'run-hook' }] }
+    });
+    writeJson(home, '.copilot/config.json', {
+      installedPlugins: [
+        { name: 'sp', marketplace: 'mp', enabled: true,
+          cache_path: path.join(home, '.copilot/installed-plugins/mp/sp') }
+      ]
+    });
+    const data = scanCopilot({ home, cwd: home });
+    assert.equal(data.pluginSkills.length, 1);
+    assert.equal(data.pluginSkills[0].name, 'test-driven-development');
+    assert.equal(data.pluginSkills[0].pluginName, 'sp');
+    assert.equal(data.pluginSkills[0].marketplace, 'mp');
+
+    assert.equal(data.pluginCommands.length, 1);
+    assert.equal(data.pluginCommands[0].name, 'run');
+    assert.equal(data.pluginCommands[0].argumentHint, '<arg>');
+    assert.equal(data.pluginCommands[0].pluginName, 'sp');
+
+    assert.equal(data.pluginAgents.length, 1);
+    assert.equal(data.pluginAgents[0].name, 'code-reviewer');
+    assert.equal(data.pluginAgents[0].model, 'opus');
+
+    assert.equal(data.pluginHooks.length, 1);
+    assert.equal(data.pluginHooks[0].event, 'session-start');
+    assert.equal(data.pluginHooks[0].pluginName, 'sp');
+    assert.equal(data.pluginHooks[0].description, 'session hooks');
+  });
+
+  it('skips contents when cache_path is missing on disk but still lists the plugin', () => {
+    const home = tmp();
+    fs.mkdirSync(path.join(home, '.copilot'));
+    writeJson(home, '.copilot/config.json', {
+      installedPlugins: [
+        { name: 'ghost', marketplace: 'mp', enabled: true,
+          cache_path: path.join(home, '.copilot/installed-plugins/mp/ghost') } // not created
+      ]
+    });
+    const data = scanCopilot({ home, cwd: home });
+    assert.equal(data.installedPlugins.length, 1);
+    assert.deepEqual(data.installedPlugins[0].files, []);
+    assert.deepEqual(data.pluginSkills, []);
+    assert.deepEqual(data.pluginCommands, []);
+    assert.deepEqual(data.pluginAgents, []);
+    assert.deepEqual(data.pluginHooks, []);
+  });
+
+  it('falls back to a computed installPath when cache_path is missing from the record', () => {
+    const home = tmp();
+    setupPlugin(home, 'mp', 'noPath', {});
+    writeJson(home, '.copilot/config.json', {
+      installedPlugins: [
+        { name: 'noPath', marketplace: 'mp', enabled: true } // no cache_path
+      ]
+    });
+    const data = scanCopilot({ home, cwd: home });
+    assert.equal(data.installedPlugins.length, 1);
+    assert.equal(data.installedPlugins[0].installPath,
+      path.join(home, '.copilot/installed-plugins/mp/noPath'));
+  });
+});
