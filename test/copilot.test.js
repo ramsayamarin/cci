@@ -269,3 +269,100 @@ describe('scanCopilot — plugins', () => {
       path.join(home, '.copilot/installed-plugins/mp/noPath'));
   });
 });
+
+describe('scanCopilot — permissions', () => {
+  it('parses per-folder tool approvals and flags current cwd vs missing dirs', () => {
+    const home = tmp();
+    const target = path.join(home, 'projx');
+    fs.mkdirSync(target, { recursive: true });
+    const missing = path.join(home, 'does', 'not', 'exist');
+    writeJson(home, '.copilot/permissions-config.json', {
+      locations: {
+        [target]: { tool_approvals: [
+          { kind: 'mcp', serverName: 'ado', toolName: 'wit_get_work_item' },
+          { kind: 'commands', commandIdentifiers: ['git pull', 'npm test'] },
+          { kind: 'write' }
+        ]},
+        [missing]: { tool_approvals: [{ kind: 'write' }] }
+      }
+    });
+    const data = scanCopilot({ home, cwd: target });
+    assert.equal(data.permissions.path, path.join(home, '.copilot/permissions-config.json'));
+    assert.equal(data.permissions.locations.length, 2);
+
+    const here = data.permissions.locations.find(l => l.folder === target);
+    assert.equal(here.exists, true);
+    assert.equal(here.isCwd, true);
+    assert.equal(here.approvals.length, 3);
+    assert.equal(here.approvals[0].kind, 'mcp');
+    assert.equal(here.approvals[0].serverName, 'ado');
+    assert.equal(here.approvals[0].toolName, 'wit_get_work_item');
+    assert.deepEqual(here.approvals[1].commandIdentifiers, ['git pull', 'npm test']);
+    assert.equal(here.approvals[2].kind, 'write');
+
+    const gone = data.permissions.locations.find(l => l.folder === missing);
+    assert.equal(gone.exists, false);
+    assert.equal(gone.isCwd, false);
+  });
+
+  it('returns empty locations when permissions-config.json is absent', () => {
+    const home = tmp();
+    fs.mkdirSync(path.join(home, '.copilot'));
+    const data = scanCopilot({ home, cwd: home });
+    assert.deepEqual(data.permissions.locations, []);
+    assert.equal(data.permissions.path, path.join(home, '.copilot/permissions-config.json'));
+  });
+
+  it('matches cwd case-insensitively and tolerates mixed path separators', () => {
+    const home = tmp();
+    const target = path.join(home, 'CaseDir');
+    fs.mkdirSync(target, { recursive: true });
+    writeJson(home, '.copilot/permissions-config.json', {
+      locations: { [target]: { tool_approvals: [{ kind: 'write' }] } }
+    });
+    // Pass in cwd with different case to verify normalization
+    const data = scanCopilot({ home, cwd: target.toLowerCase() });
+    assert.equal(data.permissions.locations[0].isCwd, true);
+  });
+});
+
+describe('scanCopilot — marketplace catalogs', () => {
+  it('walks marketplace-cache and links installed plugins', () => {
+    const home = tmp();
+    // Install one plugin so the catalog can mark it installed
+    writeJson(home, '.copilot/config.json', {
+      installedPlugins: [
+        { name: 'p1', marketplace: 'mkt', enabled: true,
+          cache_path: path.join(home, '.copilot/installed-plugins/mkt/p1') }
+      ]
+    });
+
+    // Marketplace cache: catalog entries for two plugins (one installed, one not)
+    // and a bonus skill at the marketplace level.
+    writeJson(home, '.copilot/marketplace-cache/mkt/plugins/p1/.claude-plugin/plugin.json',
+      { name: 'p1', description: 'first plugin' });
+    writeJson(home, '.copilot/marketplace-cache/mkt/plugins/p2/plugin.json',
+      { name: 'p2', description: 'second plugin' });
+    fs.mkdirSync(path.join(home, '.copilot/marketplace-cache/mkt/skills/extra'), { recursive: true });
+    fs.writeFileSync(path.join(home, '.copilot/marketplace-cache/mkt/skills/extra/SKILL.md'),
+      '---\nname: extra\ndescription: Bonus skill\n---');
+
+    const data = scanCopilot({ home, cwd: home });
+    assert.ok(data.marketplaceCatalogs.mkt, 'mkt catalog populated');
+    const cat = data.marketplaceCatalogs.mkt;
+    assert.equal(cat.plugins.length, 2);
+    const p1 = cat.plugins.find(p => p.name === 'p1');
+    assert.equal(p1.installed, true);
+    const p2 = cat.plugins.find(p => p.name === 'p2');
+    assert.equal(p2.installed, false);
+    assert.equal(cat.skills.length, 1);
+    assert.equal(cat.skills[0].name, 'extra');
+  });
+
+  it('returns empty catalogs when marketplace-cache is absent', () => {
+    const home = tmp();
+    fs.mkdirSync(path.join(home, '.copilot'));
+    const data = scanCopilot({ home, cwd: home });
+    assert.deepEqual(data.marketplaceCatalogs, {});
+  });
+});
