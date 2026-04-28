@@ -440,3 +440,60 @@ describe('buildTree memory', () => {
     assert.equal(mem.children[0].icon, ICONS['memory-file']);
   });
 });
+
+// --- buildTree: mode label & permissions ---
+
+describe('buildTree mode handling', () => {
+  it('uses User (Global) label and stores mode for claude-code', () => {
+    const data = emptyData();
+    data.mode = 'claude-code';
+    const tree = buildTree(data);
+    const userScope = tree[0];
+    assert.equal(userScope.label, 'User (Global)');
+    assert.equal(userScope.data.mode, 'claude-code');
+  });
+
+  it('uses User (Copilot CLI) label for copilot mode', () => {
+    const data = emptyData();
+    data.mode = 'copilot-cli';
+    const tree = buildTree(data);
+    const userScope = tree[0];
+    assert.equal(userScope.label, 'User (Copilot CLI)');
+    assert.equal(userScope.data.mode, 'copilot-cli');
+  });
+
+  it('omits Permissions node when no permissions data exists', () => {
+    const tree = buildTree(emptyData());
+    const userScope = tree[0];
+    const perm = (userScope.children || []).find(c => c.id === 'user-permissions');
+    assert.equal(perm, undefined);
+  });
+
+  it('emits Permissions node with per-folder children for copilot data', () => {
+    const data = emptyData();
+    data.mode = 'copilot-cli';
+    data.permissions = {
+      path: '/home/.copilot/permissions-config.json',
+      locations: [
+        { folder: '/proj/x', exists: true, isCwd: true,
+          approvals: [{ kind: 'mcp', serverName: 'ado', toolName: 'wit' }, { kind: 'write' }] },
+        { folder: '/missing', exists: false, isCwd: false,
+          approvals: [{ kind: 'write' }] }
+      ]
+    };
+    const tree = buildTree(data);
+    const userScope = tree[0];
+    const perms = userScope.children.find(c => c.id === 'user-permissions');
+    assert.ok(perms, 'permissions node exists');
+    assert.equal(perms.label, 'Permissions');
+    assert.equal(perms.count, 2);
+    assert.equal(perms.children.length, 2);
+    const here = perms.children.find(c => c.data.folder === '/proj/x');
+    assert.equal(here.dimmed, false);
+    assert.equal(here.count, 2);
+    assert.match(here.label, /\/proj\/x$/);
+    const gone = perms.children.find(c => c.data.folder === '/missing');
+    assert.equal(gone.dimmed, true);
+    assert.match(gone.label, /\(missing\)/);
+  });
+});
