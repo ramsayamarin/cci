@@ -10,23 +10,27 @@ const args = process.argv.slice(2);
 if (args.includes('--help') || args.includes('-h')) {
   console.log(`Usage: cci [options]
 
-Opens an interactive dashboard showing all Claude Code configuration.
+Opens an interactive dashboard showing Claude Code or Copilot CLI configuration.
+Mode is auto-detected from your home directory; override with the flags below.
 
 Options:
   -h, --help     Show this help message
   -p, --print    Print an inline summary to the terminal instead of
-                 opening the HTML dashboard (excludes marketplaces)`);
+                 opening the HTML dashboard (excludes marketplaces)
+      --copilot  Force Copilot CLI mode (~/.copilot)
+      --claude   Force Claude Code mode (~/.claude)`);
   process.exit(0);
 }
 
-const subcommand = args.find(a => !a.startsWith('-'));
+const VALID_FLAGS = new Set(['--help', '-h', '--print', '-p', '--copilot', '--claude']);
+const subcommand = args.find(a => !a.startsWith('-') && !VALID_FLAGS.has(a));
 if (subcommand) {
   console.error(`Unknown command: ${subcommand}\nRun cci --help for usage.`);
   process.exit(1);
 }
 
 // Scan configuration
-const data = scan();
+const data = scan(undefined, { argv: args });
 
 const wantsPrint = args.some(a => a === '--print' || a === '-p' || a.startsWith('--print=') || a.startsWith('-p='));
 if (wantsPrint) {
