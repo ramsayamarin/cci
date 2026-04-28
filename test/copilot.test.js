@@ -89,6 +89,27 @@ describe('scanCopilot — settings, config, mcp', () => {
     assert.ok(data.generatedAt);
   });
 
+  it('tolerates JSONC line and block comments in config files', () => {
+    const home = tmp();
+    fs.mkdirSync(path.join(home, '.copilot'));
+    // Mimic real Copilot CLI config.json which is JSONC
+    fs.writeFileSync(path.join(home, '.copilot', 'config.json'),
+      '// This file is managed automatically.\n' +
+      '// Do not edit by hand.\n' +
+      '{\n' +
+      '  /* installed plugins live here */\n' +
+      '  "installedPlugins": [\n' +
+      '    { "name": "p1", "marketplace": "mkt", "enabled": true } // first one\n' +
+      '  ],\n' +
+      '  "trustedFolders": ["C:\\\\path\\\\with\\\\//slashes"]\n' +
+      '}\n');
+    const data = scanCopilot({ home, cwd: home });
+    assert.equal(data.installedPlugins.length, 1);
+    assert.equal(data.installedPlugins[0].name, 'p1');
+    // Ensure the // inside the string literal was preserved
+    assert.equal(data.trustedFolders[0], 'C:\\path\\with\\//slashes');
+  });
+
   it('handles a completely empty ~/.copilot dir without crashing', () => {
     const home = tmp();
     fs.mkdirSync(path.join(home, '.copilot'));
