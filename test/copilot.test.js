@@ -89,6 +89,23 @@ describe('scanCopilot — settings, config, mcp', () => {
     assert.ok(data.generatedAt);
   });
 
+  it('strips trailing commas in JSONC config files', () => {
+    const home = tmp();
+    fs.mkdirSync(path.join(home, '.copilot'));
+    fs.writeFileSync(path.join(home, '.copilot', 'config.json'),
+      '// header\n' +
+      '{\n' +
+      '  "installedPlugins": [\n' +
+      '    { "name": "p1", "marketplace": "mkt", "enabled": true },\n' +
+      '  ],\n' +
+      '  "trustedFolders": ["/x", "/y",],\n' +
+      '}\n');
+    const data = scanCopilot({ home, cwd: home });
+    assert.equal(data.installedPlugins.length, 1);
+    assert.equal(data.installedPlugins[0].name, 'p1');
+    assert.deepEqual(data.trustedFolders, ['/x', '/y']);
+  });
+
   it('tolerates JSONC line and block comments in config files', () => {
     const home = tmp();
     fs.mkdirSync(path.join(home, '.copilot'));

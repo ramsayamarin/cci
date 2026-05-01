@@ -496,4 +496,36 @@ describe('buildTree mode handling', () => {
     assert.equal(gone.dimmed, true);
     assert.match(gone.label, /\(missing\)/);
   });
+
+  it('uses the same folder icon for all permission entries', () => {
+    const data = emptyData();
+    data.mode = 'copilot-cli';
+    data.permissions = {
+      path: '/x',
+      locations: [
+        { folder: '/proj/x', exists: true, isCwd: true, approvals: [] },
+        { folder: '/other', exists: true, isCwd: false, approvals: [] }
+      ]
+    };
+    const tree = buildTree(data);
+    const perms = tree[0].children.find(c => c.id === 'user-permissions');
+    const icons = new Set(perms.children.map(c => c.icon));
+    assert.equal(icons.size, 1, 'all permission folders should share one icon');
+  });
+
+  it('omits Project scope from tree in copilot-cli mode', () => {
+    const data = emptyData();
+    data.mode = 'copilot-cli';
+    const tree = buildTree(data);
+    assert.equal(tree.length, 1);
+    assert.equal(tree[0].id, 'scope-user');
+  });
+
+  it('keeps Project scope in tree in claude-code mode', () => {
+    const data = emptyData();
+    data.mode = 'claude-code';
+    const tree = buildTree(data);
+    assert.equal(tree.length, 2);
+    assert.equal(tree[1].id, 'scope-project');
+  });
 });

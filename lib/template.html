@@ -160,7 +160,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sa
 <body>
 
 <div class="header">
-  <div class="header-logo"><span class="product" id="productLabel">Claude Code Inspector</span><span class="hint">'<code>cci --print</code>' for inline terminal view</span></div>
+  <div class="header-logo"><span class="product" id="productLabel">Claude Code Inspector</span><span class="hint">'<code id="productHint">cci --print</code>' for inline terminal view</span></div>
   <div class="header-meta" id="headerMeta"></div>
 </div>
 
@@ -175,10 +175,14 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sa
 <script>
 const D = "__DASHBOARD_DATA__";
 (function() {
-  var label = D && D.mode === 'copilot-cli' ? 'Copilot CLI Inspector' : 'Claude Code Inspector';
+  var isCopilot = D && D.mode === 'copilot-cli';
+  var label = isCopilot ? 'Copilot Inspector' : 'Claude Code Inspector';
+  var hint = isCopilot ? 'cpi --print' : 'cci --print';
   var el = document.getElementById('productLabel');
   if (el) el.textContent = label;
-  if (typeof document !== 'undefined') document.title = label.toLowerCase().includes('copilot') ? 'cci · Copilot CLI' : 'cci · Claude Code';
+  var hintEl = document.getElementById('productHint');
+  if (hintEl) hintEl.textContent = hint;
+  if (typeof document !== 'undefined') document.title = isCopilot ? 'cci · Copilot CLI' : 'cci · Claude Code';
 })();
 const esc = s => { if(!s) return ''; const d=document.createElement('div'); d.textContent=String(s); return d.innerHTML; };
 const pill = (text, cls='dim') => `<span class="pill pill-${cls}">${esc(text)}</span>`;
@@ -319,6 +323,8 @@ function showDetail(node) {
   if (node.type === 'command') return showCommand(el, node);
   if (node.type === 'plugin-agent') return showPluginAgent(el, node);
   if (node.type === 'plugin-hook') return showPluginHook(el, node);
+  if (node.type === 'permission-folder') return showPermissionFolder(el, node);
+  if (node.type === 'permissions') return showPermissions(el, node);
   if (node.type === 'mcp') return showMcp(el, node);
   if (node.type === 'claudemd') return showClaudeMd(el, node);
   if (node.type === 'memory-file') return showMemoryFile(el, node);
@@ -370,40 +376,6 @@ function showDirectory(el, node) {
 
 function showFolder(el, node) {
   let html = `<div class="detail-title">${node.icon} ${esc(node.label)}</div>`;
-  {
-    const emptyGuides = {
-      'user-rules': { what: 'Tired of repeating the same instructions? Rules let you say it once and have Claude follow it every time it touches matching files.', example: 'A rule for <code>*.test.ts</code> could say "always use describe/it blocks and prefer toBe over toEqual."', create: 'Create a markdown file with a <code>paths:</code> frontmatter field and your instructions.', copy: '~/.claude/rules/testing.md' },
-      'proj-rules': { what: 'Keep your team consistent. Rules automatically apply instructions whenever Claude works on files matching a pattern — no one has to remember to ask.', example: 'A rule for <code>src/api/**</code> could say "always validate input with zod and return typed errors."', create: 'Create a markdown file with a <code>paths:</code> frontmatter field and your instructions.', copy: '.claude/rules/api-style.md' },
-      'user-hooks': { what: 'Want Claude to automatically lint, test, or validate before making changes? Hooks run your shell commands at key moments in Claude\'s workflow.', example: 'A PreToolUse hook on <code>Write</code> could lint files before Claude writes them.', create: 'Add a <code>"hooks"</code> section to your settings file.', copy: '~/.claude/settings.json' },
-      'proj-hooks': { what: 'Enforce team standards automatically. Hooks run shell commands before/after Claude uses tools — great for linting, logging, or validation.', example: 'A PostToolUse hook on <code>Bash</code> could log every command Claude runs.', create: 'Add a <code>"hooks"</code> section to your project settings file.', copy: '.claude/settings.json' },
-      'user-skills': { what: 'Find yourself giving Claude the same complex instructions over and over? Package them into a skill you invoke with one command like <code>/deploy</code>.', example: 'A <code>/deploy</code> skill could run your build, test, and deploy pipeline in sequence.', create: 'Create a SKILL.md with YAML frontmatter and instructions.', copy: '~/.claude/skills/my-skill/SKILL.md' },
-      'proj-skills': { what: 'Share repeatable workflows with your team. Project skills live in the repo so everyone can use <code>/review</code> or <code>/setup</code> the same way.', example: 'A <code>/review</code> skill could enforce your team\'s code review checklist.', create: 'Create a SKILL.md with YAML frontmatter and instructions.', copy: '.claude/skills/my-skill/SKILL.md' },
-      'user-mcp': { what: 'Claude can only read files and run commands by default. MCP servers unlock new abilities — browsing the web, querying databases, calling APIs.', example: 'A Playwright MCP server lets Claude control a browser for testing.', create: 'Add servers under the <code>"mcpServers"</code> field.', copy: '~/.claude.json' },
-      'proj-mcp': { what: 'Give your whole team the same external tool access. Project MCP servers are committed to the repo so everyone gets the same capabilities.', example: 'An Azure DevOps MCP server lets Claude create PRs and query work items.', create: 'Create a JSON file with a <code>"mcpServers"</code> field in your project root.', copy: '.mcp.json' },
-      'user-agents': { what: 'Need Claude to behave differently for different tasks? Agents are specialized personas with their own instructions, model, and tool access.', example: 'A "reviewer" agent could use haiku for fast code review with read-only tools.', create: 'Create a markdown file with YAML frontmatter (name, model, tools) and a system prompt.', copy: '~/.claude/agents/my-agent.md' },
-      'proj-agents': { what: 'Share specialized Claude personas with your team. Project agents let everyone use the same "tester" or "reviewer" persona from the repo.', example: 'A "tester" agent could focus on writing tests with access only to Read, Write, and Bash.', create: 'Create a markdown file with YAML frontmatter and a system prompt.', copy: '.claude/agents/my-agent.md' },
-      'user-commands': { what: 'Commands are lightweight slash commands - just a markdown file with a prompt template. Simpler than skills, perfect for quick reusable prompts.', example: 'A <code>/diff-review</code> command could contain a prompt template for reviewing git diffs with specific criteria.', create: 'Create a markdown file with optional YAML frontmatter (name, description, argument-hint).', copy: '~/.claude/commands/my-command.md' },
-      'proj-commands': { what: 'Share quick prompt templates with your team. Project commands live in the repo so everyone gets the same slash commands.', example: 'A <code>/deploy-checklist</code> command could guide Claude through your team\'s deployment verification steps.', create: 'Create a markdown file with optional YAML frontmatter (name, description, argument-hint).', copy: '.claude/commands/my-command.md' },
-      'user-plugins': { what: 'Get new skills and tools instantly. Plugins are community packages that extend Claude Code — install once and they\'re available everywhere.', example: 'The <code>superpowers</code> plugin adds skills for brainstorming, debugging, and TDD workflows.', create: 'Run this command in Claude Code to browse and install from marketplaces.', copy: '/plugins' },
-      'proj-plugins': { what: 'Need a plugin only for this repo? Project-scoped plugins activate just for this project, keeping your global setup clean.', example: 'A <code>pr-review-toolkit</code> plugin could add PR review skills just for this repo.', create: 'Run <code>/plugins</code> and choose "project" scope when installing.', copy: '/plugins' },
-      'proj-memory': { what: 'Claude forgets everything between sessions. Auto memory fixes that — Claude saves notes about your codebase so it doesn\'t start from scratch each time.', example: 'Claude might save <code>debugging.md</code> noting "the auth module uses JWT with RS256, tokens expire in 1h."', create: 'Just tell Claude "remember that..." or it will save memories automatically when it discovers stable patterns.', copy: null }
-    };
-    const guide = emptyGuides[node.id];
-    if (guide) {
-      html += `<div style="display:flex;flex-direction:column;padding:40px 20px;max-width:440px">`;
-      html += `<div style="color:var(--text);font-size:13px;line-height:1.6;margin-bottom:20px">${guide.what}</div>`;
-      html += `<div style="width:100%;border:1px solid var(--border);border-radius:8px;padding:14px 16px;background:var(--bg-card);margin-bottom:14px">`;
-      html += `<div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);margin-bottom:6px;font-weight:600">Example</div>`;
-      html += `<div style="font-size:12px;color:var(--text);line-height:1.6">${guide.example}</div>`;
-      html += `</div>`;
-      html += `<div style="width:100%;border:1px solid var(--border);border-radius:8px;padding:14px 16px;background:var(--bg-card)">`;
-      html += `<div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);margin-bottom:6px;font-weight:600">How to create</div>`;
-      html += `<div style="font-size:12px;color:var(--text);line-height:1.6">${guide.create}</div>`;
-      if (guide.copy) html += copyBox(guide.copy);
-      html += `</div>`;
-      html += `</div>`;
-    }
-  }
   el.innerHTML = html;
 }
 
@@ -515,6 +487,49 @@ function showMcp(el, node) {
   el.innerHTML = html;
 }
 
+function showPermissions(el, node) {
+  const data = node.data;
+  let html = `<div class="detail-title">🔐 Permissions</div>`;
+  html += `<div class="detail-subtitle">Per-folder tool approvals saved by Copilot CLI</div>`;
+  html += pathBar(data.path);
+  el.innerHTML = html;
+}
+
+function showPermissionFolder(el, node) {
+  const loc = node.data;
+  let html = `<div class="detail-title">📂 ${esc(loc.folder)}</div>`;
+  if (!loc.exists) html += `<div class="detail-subtitle">folder missing</div>`;
+  html += pathBar(loc.folder);
+  const approvals = loc.approvals || [];
+  const mcps = approvals.filter(a => a.kind === 'mcp');
+  const cmds = approvals.filter(a => a.kind === 'commands');
+  const writes = approvals.filter(a => a.kind === 'write');
+  if (!approvals.length) {
+    html += `<div class="empty-state"><div class="empty-title">No approvals saved for this folder</div></div>`;
+  }
+  if (mcps.length) {
+    const byServer = {};
+    mcps.forEach(a => {
+      const s = a.serverName || '?';
+      (byServer[s] = byServer[s] || []).push(a.toolName || '');
+    });
+    html += `<div class="detail-section"><div class="detail-section-title">MCP tools (${mcps.length})</div>`;
+    Object.entries(byServer).forEach(([server, tools]) => {
+      html += `<div class="info-row"><span class="info-label">${esc(server)}</span><span class="info-value"><div class="pills">${tools.map(t => pill(t, 'dim')).join('')}</div></span></div>`;
+    });
+    html += `</div>`;
+  }
+  if (cmds.length) {
+    const allIds = [];
+    cmds.forEach(c => (c.commandIdentifiers || []).forEach(id => allIds.push(id)));
+    html += `<div class="detail-section"><div class="detail-section-title">Commands (${allIds.length})</div><div class="pills">${allIds.map(id => pill(id, 'dim')).join('')}</div></div>`;
+  }
+  if (writes.length) {
+    html += `<div class="detail-section"><div class="detail-section-title">Write access</div><div class="info-row"><span class="info-value">Copilot can write files in this folder.</span></div></div>`;
+  }
+  el.innerHTML = html;
+}
+
 function showClaudeMd(el, node) {
   const m = node.data;
   const exists = m.data?.exists;
@@ -526,28 +541,7 @@ function showClaudeMd(el, node) {
   }
   if (!exists) {
     const paths = {managed:'C:\\\\Program Files\\\\ClaudeCode\\\\CLAUDE.md', project:'./CLAUDE.md', user:'~/.claude/CLAUDE.md', local:'./CLAUDE.local.md'};
-    const claudeGuides = {
-      user: { what: 'Stop repeating yourself across projects. This file gives Claude your personal preferences once — coding style, tool choices, communication tone — and they apply everywhere.', example: '"Always use TypeScript strict mode. Prefer functional patterns. Explain your reasoning before writing code."', create: 'Create this file with your instructions in plain markdown.', copy: '~/.claude/CLAUDE.md' },
-      project: { what: 'Get your whole team on the same page. This file lives in the repo so every teammate\'s Claude follows the same project conventions, architecture decisions, and coding standards.', example: '"This is a Next.js app. API routes are in src/api/. Always use zod for validation. Never import from internal packages directly."', create: 'Create this file in your project root with project-specific instructions.', copy: 'CLAUDE.md' },
-      local: { what: 'Need personal instructions just for this project without affecting the team? This file is gitignored — only your Claude sees it.', example: '"I\'m working on the auth module this sprint. Always run tests after changes. Use verbose git commit messages."', create: 'Create this file in your project root. It\'s automatically gitignored.', copy: 'CLAUDE.local.md' }
-    };
-    const cg = claudeGuides[m.scope];
-    if (cg) {
-      html += `<div style="display:flex;flex-direction:column;padding:40px 20px;max-width:440px">`;
-      html += `<div style="color:var(--text);font-size:13px;line-height:1.6;margin-bottom:20px">${cg.what}</div>`;
-      html += `<div style="width:100%;border:1px solid var(--border);border-radius:8px;padding:14px 16px;background:var(--bg-card);margin-bottom:14px">`;
-      html += `<div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:6px;font-weight:600">Example content</div>`;
-      html += `<div style="font-size:12px;color:var(--text);line-height:1.6;font-style:italic">${cg.example}</div>`;
-      html += `</div>`;
-      html += `<div style="width:100%;border:1px solid var(--border);border-radius:8px;padding:14px 16px;background:var(--bg-card)">`;
-      html += `<div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:6px;font-weight:600">How to create</div>`;
-      html += `<div style="font-size:12px;color:var(--text);line-height:1.6">${cg.create}</div>`;
-      if (cg.copy) html += copyBox(cg.copy);
-      html += `</div>`;
-      html += `</div>`;
-    } else {
-      html += `<div class="empty-state"><div class="empty-icon">${ICONS.claudemd}</div><div class="empty-title">Not configured</div><div class="empty-hint">Create this file at ${fpath(paths[m.scope]||'')}</div></div>`;
-    }
+    html += `<div class="empty-state"><div class="empty-icon">${ICONS.claudemd}</div><div class="empty-title">Not configured</div><div class="empty-hint">Create this file at ${fpath(paths[m.scope]||'')}</div></div>`;
   }
   el.innerHTML = html;
 }
@@ -626,26 +620,7 @@ function showSettingsLayer(el, node) {
     });
     html += `</div>`;
   } else {
-    const settingsGuides = {
-      user: { what: 'Control how Claude works everywhere — your default model, enabled plugins, environment variables, and permission preferences.', example: '<code>"model": "opus", "fastMode": true, "enabledPlugins": {...}</code>', create: 'Create or edit this file. Most settings can also be changed with <code>/config</code> in Claude Code.', copy: '~/.claude/settings.json' },
-      project: { what: 'Enforce team-wide guardrails. Project settings control which tools Claude can use, what hooks run, and how it behaves in this repo — for everyone.', example: '<code>"hooks": {"PreToolUse": [...]}, "allowedTools": ["Bash", "Read"]</code>', create: 'Use for hooks, tool restrictions, and team-wide config.', copy: '.claude/settings.json' },
-      local: { what: 'Override any setting just for yourself in this project — without touching the team\'s config. Gitignored, private to you.', example: '<code>"model": "haiku"</code> to use a faster model just for yourself in this project.', create: 'It\'s automatically gitignored and overrides other settings layers.', copy: '.claude/settings.local.json' }
-    };
-    const sg = settingsGuides[s.scope];
-    if (sg) {
-      html += `<div style="display:flex;flex-direction:column;padding:40px 20px;max-width:440px">`;
-      html += `<div style="color:var(--text);font-size:13px;line-height:1.6;margin-bottom:20px">${sg.what}</div>`;
-      html += `<div style="width:100%;border:1px solid var(--border);border-radius:8px;padding:14px 16px;background:var(--bg-card);margin-bottom:14px">`;
-      html += `<div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:6px;font-weight:600">Example</div>`;
-      html += `<div style="font-size:12px;color:var(--text);line-height:1.6">${sg.example}</div>`;
-      html += `</div>`;
-      html += `<div style="width:100%;border:1px solid var(--border);border-radius:8px;padding:14px 16px;background:var(--bg-card)">`;
-      html += `<div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:6px;font-weight:600">How to create</div>`;
-      html += `<div style="font-size:12px;color:var(--text);line-height:1.6">${sg.create}</div>`;
-      if (sg.copy) html += copyBox(sg.copy);
-      html += `</div>`;
-      html += `</div>`;
-    }
+    html += `<div class="empty-state"><div class="empty-icon">${ICONS.settings}</div><div class="empty-title">Not configured</div></div>`;
   }
   el.innerHTML = html;
 }

@@ -1,4 +1,4 @@
-# cci — Claude Code & Copilot CLI Inspector
+# cci & cpi — Claude Code & Copilot CLI Inspector
 
 A CLI tool that scans your Claude Code or GitHub Copilot CLI configuration and opens a visual dashboard in the browser.
 
@@ -16,15 +16,24 @@ Or run without installing:
 npx claude-cci
 ```
 
+The package installs two commands:
+
+- **`cci`** — inspects Claude Code (`~/.claude`)
+- **`cpi`** — inspects GitHub Copilot CLI (`~/.copilot`)
+
 ## Usage
 
 ```bash
-cci
+cci          # opens the Claude Code dashboard
+cpi          # opens the Copilot CLI dashboard
+
+cci --print  # prints an inline tree summary in the terminal
+cpi --print
 ```
 
-Run from any project directory. It reads your Claude Code setup and opens a self-contained HTML dashboard in your default browser.
+Run from any project directory. Each command reads its respective setup and opens a self-contained HTML dashboard in your default browser, or with `--print` writes a tree summary to stdout.
 
-## What it shows
+## What `cci` (Claude Code) shows
 
 Scans `~/.claude/`, `~/.claude.json`, and the current project's `.claude/` directory:
 
@@ -38,36 +47,23 @@ Scans `~/.claude/`, `~/.claude.json`, and the current project's `.claude/` direc
 - **Auto Memory** — memory files Claude has written for your project
 - **Settings** — user, project, and local settings with precedence view
 
-## Copilot CLI mode
+## What `cpi` (Copilot CLI) shows
 
-`cci` also inspects [GitHub Copilot CLI](https://github.com/github/copilot-cli) configuration. Mode is auto-detected from your home directory (presence of `~/.claude` vs `~/.copilot`); force a specific mode with a flag:
+Scans `~/.copilot/`. Copilot CLI has no project-level config, so the dashboard shows only the user scope:
 
-```bash
-cci --copilot
-cci --claude
-```
-
-You can also set `CCI_MODE=copilot-cli` (or `claude-code`) in your environment.
-
-In Copilot CLI mode, the dashboard surfaces:
-
-- **Settings** (`~/.copilot/settings.json`) — model, theme, allowed URLs, enabled plugins
+- **Settings** (`~/.copilot/settings.json`) — model, allowed URLs, enabled plugins
 - **Logged-in users**, **trusted folders**, and **session sync** entries (from `~/.copilot/config.json`)
 - **MCP Servers** (`~/.copilot/mcp-config.json`)
-- **Permissions** — per-folder tool approvals (`~/.copilot/permissions-config.json`); the current working directory is highlighted, missing folders are dimmed
+- **Permissions** — per-folder tool approvals (`~/.copilot/permissions-config.json`); missing folders are dimmed
 - **Plugins** under `~/.copilot/installed-plugins/<marketplace>/<plugin>/` along with their skills, commands, agents, and hooks
 - **Marketplaces** cached under `~/.copilot/marketplace-cache/`
-
-Copilot CLI has no project-level config directory, so the *Project* scope is empty in that mode.
 
 ## Flags
 
 | Flag | Description |
 |---|---|
 | `-h`, `--help` | Show help |
-| `-p`, `--print` | Print an inline summary to the terminal instead of opening the dashboard |
-| `--copilot` | Force Copilot CLI mode |
-| `--claude` | Force Claude Code mode |
+| `-p`, `--print` | Print an inline tree summary to the terminal instead of opening the dashboard |
 
 ## Requirements
 
